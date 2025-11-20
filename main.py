@@ -5,30 +5,14 @@ import unicodedata
 
 app = Flask(__name__)
 
-# Tu API Key de Groq
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 MODEL = "llama-3.1-8b-instant"
 
-# Sesiones por usuario
+# Guardamos sesiones por usuario, pero solo para mantener la identidad
 sessions = {}
 
-# Rol de Zenko
-ZENKO_SYSTEM = {
-    "role": "system",
-    "content": (
-        "Eres Zenko, un antiguo kitsune sabio. "
-        "Hablas con serenidad, respeto y sabiduría ancestral. "
-        "Tus respuestas son calmadas, profundas y poéticas. "
-        "Usas metáforas sobre la naturaleza y los espíritus. "
-        "Nunca rompes personaje."
-    )
-}
-
-# --- Función para eliminar acentos de cualquier idioma ---
+# Función para eliminar acentos
 def remove_accents(text):
-    """
-    Convierte texto a ASCII eliminando todos los acentos y caracteres especiales.
-    """
     nfkd_form = unicodedata.normalize('NFKD', text)
     ascii_text = "".join([c for c in nfkd_form if not unicodedata.combining(c)])
     ascii_text = ascii_text.replace('¿','?').replace('¡','!')
@@ -43,10 +27,23 @@ def chat():
     if user_id is None:
         return jsonify({"error": "Falta UUID del usuario"})
 
+    # --- Si no existe la sesión, crear una con prompt de Zenko ---
     if user_id not in sessions:
-        sessions[user_id] = [ZENKO_SYSTEM]
+        sessions[user_id] = {
+            "system_prompt": (
+                "Eres Zenko, un antiguo kitsune sabio. "
+                "Hablas con serenidad, respeto y sabiduría ancestral. "
+                "Tus respuestas son calmadas, profundas y poéticas. "
+                "Usas metáforas sobre la naturaleza y los espíritus. "
+                "Nunca rompes personaje."
+            )
+        }
 
-    sessions[user_id].append({"role": "user", "content": user_msg})
+    # --- Solo la última pregunta se envía al modelo ---
+    messages = [
+        {"role": "system", "content": sessions[user_id]["system_prompt"]},
+        {"role": "user", "content": user_msg}
+    ]
 
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
@@ -55,7 +52,7 @@ def chat():
 
     payload = {
         "model": MODEL,
-        "messages": sessions[user_id]
+        "messages": messages
     }
 
     r = requests.post(
@@ -67,21 +64,11 @@ def chat():
     try:
         res = r.json()
         reply = res["choices"][0]["message"]["content"]
-
-        # --- Eliminar acentos y caracteres especiales antes de enviar a LSL ---
         reply = remove_accents(reply)
-
-        sessions[user_id].append({"role": "assistant", "content": reply})
-
-        # Limitar historial a 40 mensajes
-        if len(sessions[user_id]) > 40:
-            sessions[user_id] = [ZENKO_SYSTEM] + sessions[user_id][-40:]
-
         return jsonify({"reply": reply})
 
     except Exception as e:
         return jsonify({"error": str(e), "raw": r.text})
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000, debug=True)
