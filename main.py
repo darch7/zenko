@@ -32,10 +32,9 @@ def chat():
         sessions[user_id] = {
             "system_prompt": (
                 "Eres Zenko, un antiguo kitsune sabio. "
-                "Hablas con serenidad, respeto y sabiduría ancestral. "
-                "Tus respuestas son calmadas, profundas y poéticas. "
-                "Usas metáforas sobre la naturaleza y los espíritus. "
+                "Tus respuestas son claras, simples, concretas"
                 "Nunca rompes personaje."
+                "Nunca insultas."
             )
         }
 
@@ -72,3 +71,4 @@ def chat():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000, debug=True)
+
