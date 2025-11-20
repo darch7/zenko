@@ -1,14 +1,18 @@
 from flask import Flask, request, jsonify
 import requests
 import os
+import unicodedata
 
 app = Flask(__name__)
 
+# Tu API Key de Groq
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 MODEL = "llama-3.1-8b-instant"
 
+# Sesiones por usuario
 sessions = {}
 
+# Rol de Zenko
 ZENKO_SYSTEM = {
     "role": "system",
     "content": (
@@ -20,16 +24,15 @@ ZENKO_SYSTEM = {
     )
 }
 
-# --- Función para eliminar acentos y ñ ---
+# --- Función para eliminar acentos de cualquier idioma ---
 def remove_accents(text):
-    replacements = {
-        'á':'a', 'é':'e', 'í':'i', 'ó':'o', 'ú':'u', 'ñ':'n',
-        'Á':'A', 'É':'E', 'Í':'I', 'Ó':'O', 'Ú':'U', 'Ñ':'N',
-        '¿':'?', '¡':'!'  # <-- agrega estos
-    }
-    for k,v in replacements.items():
-        text = text.replace(k,v)
-    return text
+    """
+    Convierte texto a ASCII eliminando todos los acentos y caracteres especiales.
+    """
+    nfkd_form = unicodedata.normalize('NFKD', text)
+    ascii_text = "".join([c for c in nfkd_form if not unicodedata.combining(c)])
+    ascii_text = ascii_text.replace('¿','?').replace('¡','!')
+    return ascii_text
 
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -65,12 +68,12 @@ def chat():
         res = r.json()
         reply = res["choices"][0]["message"]["content"]
 
-        # --- Aquí eliminamos acentos antes de enviar a LSL ---
+        # --- Eliminar acentos y caracteres especiales antes de enviar a LSL ---
         reply = remove_accents(reply)
 
         sessions[user_id].append({"role": "assistant", "content": reply})
 
-        # Limitar historial
+        # Limitar historial a 40 mensajes
         if len(sessions[user_id]) > 40:
             sessions[user_id] = [ZENKO_SYSTEM] + sessions[user_id][-40:]
 
@@ -80,7 +83,5 @@ def chat():
         return jsonify({"error": str(e), "raw": r.text})
 
 
-# --- Para pruebas locales ---
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000, debug=True)
-
