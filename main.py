@@ -20,6 +20,16 @@ ZENKO_SYSTEM = {
     )
 }
 
+# --- Función para eliminar acentos y ñ ---
+def remove_accents(text):
+    replacements = {
+        'á':'a', 'é':'e', 'í':'i', 'ó':'o', 'ú':'u', 'ñ':'n',
+        'Á':'A', 'É':'E', 'Í':'I', 'Ó':'O', 'Ú':'U', 'Ñ':'N'
+    }
+    for k,v in replacements.items():
+        text = text.replace(k,v)
+    return text
+
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json()
@@ -54,8 +64,12 @@ def chat():
         res = r.json()
         reply = res["choices"][0]["message"]["content"]
 
+        # --- Aquí eliminamos acentos antes de enviar a LSL ---
+        reply = remove_accents(reply)
+
         sessions[user_id].append({"role": "assistant", "content": reply})
 
+        # Limitar historial
         if len(sessions[user_id]) > 40:
             sessions[user_id] = [ZENKO_SYSTEM] + sessions[user_id][-40:]
 
@@ -63,3 +77,8 @@ def chat():
 
     except Exception as e:
         return jsonify({"error": str(e), "raw": r.text})
+
+
+# --- Para pruebas locales ---
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000, debug=True)
