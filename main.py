@@ -24,7 +24,8 @@ ZENKO_SYSTEM = {
 def remove_accents(text):
     replacements = {
         'á':'a', 'é':'e', 'í':'i', 'ó':'o', 'ú':'u', 'ñ':'n',
-        'Á':'A', 'É':'E', 'Í':'I', 'Ó':'O', 'Ú':'U', 'Ñ':'N'
+        'Á':'A', 'É':'E', 'Í':'I', 'Ó':'O', 'Ú':'U', 'Ñ':'N',
+        '¿':'?', '¡':'!'  # <-- agrega estos
     }
     for k,v in replacements.items():
         text = text.replace(k,v)
@@ -82,3 +83,4 @@ def chat():
 # --- Para pruebas locales ---
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000, debug=True)
+
