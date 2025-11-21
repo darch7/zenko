@@ -51,9 +51,9 @@ def chat():
 
     # ---------------------------------------
     # 1) EL USUARIO QUIERE CAMBIAR EL IDIOMA
-    # Comandos desde el HUD: !zenko es / !zenko en / !zenko fr
+    # Comandos desde el HUD: @zenko es / @zenko en / @zenko fr
     # ---------------------------------------
-    if user_msg.lower().startswith("!zenko"):
+    if user_msg.lower().startswith("@zenko"):
         new_lang = user_msg.lower().split(" ")[1]
         set_language(user_id, new_lang)
         return jsonify({"reply": remove_accents(f"Idioma actualizado a {get_language(user_id)}")})
@@ -128,4 +128,5 @@ def chat():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000, debug=True)
+
 
