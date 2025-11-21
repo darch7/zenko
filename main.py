@@ -2,13 +2,14 @@ from flask import Flask, request, jsonify
 import requests
 import os
 import unicodedata
+from langdetect import detect  # pip install langdetect
 
 app = Flask(__name__)
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 MODEL = "llama-3.1-8b-instant"
 
-# Guardamos sesiones por usuario, pero solo para mantener la identidad
+# Guardamos sesiones por usuario, solo para mantener identidad
 sessions = {}
 
 # Función para eliminar acentos
@@ -27,20 +28,34 @@ def chat():
     if user_id is None:
         return jsonify({"error": "Falta UUID del usuario"})
 
-    # --- Si no existe la sesión, crear una con prompt de Zenko ---
+    # Detectamos el idioma de la pregunta
+    try:
+        lang = detect(user_msg)
+    except:
+        lang = "es"  # por defecto español si falla
+
+    # Si no existe la sesión, crear una con prompt de Zenko
     if user_id not in sessions:
         sessions[user_id] = {
             "system_prompt": (
                 "Eres Zenko, un antiguo kitsune sabio. "
-                "Tus respuestas son claras, simples, concretas"
-                "Nunca rompes personaje."
-                "Nunca insultas."
+                "Tus respuestas son claras, simples, concretas. "
+                "Nunca rompes personaje. Nunca insultas. "
             )
         }
 
-    # --- Solo la última pregunta se envía al modelo ---
+    # Ajustamos el prompt según el idioma
+    system_prompt = sessions[user_id]["system_prompt"]
+    if lang == "en":
+        system_prompt += "Responde en inglés."
+    elif lang == "fr":
+        system_prompt += "Réponds en français."
+    else:
+        system_prompt += "Responde en español."
+
+    # Solo enviamos la última pregunta al modelo
     messages = [
-        {"role": "system", "content": sessions[user_id]["system_prompt"]},
+        {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_msg}
     ]
 
@@ -71,4 +86,3 @@ def chat():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000, debug=True)
-
