@@ -12,7 +12,7 @@ MODEL = "llama-3.1-8b-instant"
 # Guardamos sesiones por usuario, solo para mantener identidad
 sessions = {}
 
-# Función para eliminar acentos
+# Función para eliminar acentos (solo para SL)
 def remove_accents(text):
     nfkd_form = unicodedata.normalize('NFKD', text)
     ascii_text = "".join([c for c in nfkd_form if not unicodedata.combining(c)])
@@ -32,7 +32,7 @@ def chat():
     try:
         lang = detect(user_msg)
     except:
-        lang = "es"  # por defecto español si falla
+        lang = "es"  # español por defecto si falla
 
     # Si no existe la sesión, crear una con prompt de Zenko
     if user_id not in sessions:
@@ -40,23 +40,23 @@ def chat():
             "system_prompt": (
                 "Eres Zenko, un antiguo kitsune sabio. "
                 "Tus respuestas son claras, simples, concretas. "
-                "Nunca rompes personaje. Nunca insultas. "
+                "Nunca rompes personaje. Nunca insultas."
             )
         }
 
-    # Ajustamos el prompt según el idioma
+    # Ajustamos el prompt según el idioma detectado
     system_prompt = sessions[user_id]["system_prompt"]
     if lang == "en":
-        system_prompt += "Responde en inglés."
+        system_prompt += " Responde en inglés y conserva acentos si los hubiera."
     elif lang == "fr":
-        system_prompt += "Réponds en français."
+        system_prompt += " Réponds en français et conserve les accents."
     else:
-        system_prompt += "Responde en español."
+        system_prompt += " Responde en español y conserva acentos."
 
     # Solo enviamos la última pregunta al modelo
     messages = [
         {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_msg}
+        {"role": "user", "content": user_msg}  # texto original
     ]
 
     headers = {
@@ -78,8 +78,10 @@ def chat():
     try:
         res = r.json()
         reply = res["choices"][0]["message"]["content"]
-        reply = remove_accents(reply)
-        return jsonify({"reply": reply})
+
+        # Solo eliminar acentos al enviar a HUD SL
+        reply_sl = remove_accents(reply)
+        return jsonify({"reply": reply_sl})
 
     except Exception as e:
         return jsonify({"error": str(e), "raw": r.text})
