@@ -12,7 +12,7 @@ MODEL = "llama-3.1-8b-instant"
 # Guardamos sesiones por usuario, solo para mantener identidad
 sessions = {}
 
-# Función para eliminar acentos (solo para SL)
+# Función para eliminar acentos (solo para HUD SL)
 def remove_accents(text):
     nfkd_form = unicodedata.normalize('NFKD', text)
     ascii_text = "".join([c for c in nfkd_form if not unicodedata.combining(c)])
@@ -25,38 +25,48 @@ def chat():
     user_id = data.get("user")
     user_msg = data.get("msg", "")
 
-    if user_id is None:
-        return jsonify({"error": "Falta UUID del usuario"})
+    if user_id is None or user_msg.strip() == "":
+        return jsonify({"error": "Falta UUID del usuario o mensaje vacío"})
 
-    # Detectamos el idioma de la pregunta
+    # Detectamos idioma de la pregunta
     try:
         lang = detect(user_msg)
     except:
-        lang = "es"  # español por defecto si falla
+        lang = "es"  # español por defecto
 
-    # Si no existe la sesión, crear una con prompt de Zenko
+    # --- Creamos la sesión si no existe ---
     if user_id not in sessions:
         sessions[user_id] = {
-            "system_prompt": (
-                "Eres Zenko, un antiguo kitsune sabio. "
-                "Tus respuestas son claras, simples, concretas. "
-                "Nunca rompes personaje. Nunca insultas."
-            )
+            "system_prompt": ""  # Lo definimos dinámicamente según idioma
         }
 
-    # Ajustamos el prompt según el idioma detectado
-    system_prompt = sessions[user_id]["system_prompt"]
+    # --- Prompt del sistema según idioma ---
     if lang == "en":
-        system_prompt += " Responde en inglés y conserva acentos si los hubiera."
+        system_prompt = (
+            "You are Zenko, an ancient wise kitsune. "
+            "Answer in English exactly in the language of the question. "
+            "Your answers are clear, simple, and concise. "
+            "Never break character. Never insult."
+        )
     elif lang == "fr":
-        system_prompt += " Réponds en français et conserve les accents."
+        system_prompt = (
+            "Vous êtes Zenko, un ancien kitsune sage. "
+            "Répondez exactement en français selon la question. "
+            "Vos réponses sont claires, simples et concises. "
+            "Ne sortez jamais de votre personnage. Ne jamais insulter."
+        )
     else:
-        system_prompt += " Responde en español y conserva acentos."
+        system_prompt = (
+            "Eres Zenko, un antiguo kitsune sabio. "
+            "Responde exactamente en español según la pregunta. "
+            "Tus respuestas son claras, simples y concretas. "
+            "Nunca rompes personaje. Nunca insultas."
+        )
 
     # Solo enviamos la última pregunta al modelo
     messages = [
         {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_msg}  # texto original
+        {"role": "user", "content": user_msg}  # texto ORIGINAL con acentos
     ]
 
     headers = {
@@ -79,7 +89,7 @@ def chat():
         res = r.json()
         reply = res["choices"][0]["message"]["content"]
 
-        # Solo eliminar acentos al enviar a HUD SL
+        # Solo eliminamos acentos para mostrar en HUD SL
         reply_sl = remove_accents(reply)
         return jsonify({"reply": reply_sl})
 
