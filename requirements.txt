@@ -1,3 +1,4 @@
-flask
+langdetect
 requests
-gunicorn
+flask
+
