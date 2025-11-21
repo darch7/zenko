@@ -51,7 +51,7 @@ def chat():
 
     # ---------------------------------------
     # 1) EL USUARIO QUIERE CAMBIAR EL IDIOMA
-    # Comandos desde el HUD: !lang es / !lang en / !lang fr
+    # Comandos desde el HUD: !zenko es / !zenko en / !zenko fr
     # ---------------------------------------
     if user_msg.lower().startswith("!zenko"):
         new_lang = user_msg.lower().split(" ")[1]
@@ -128,3 +128,4 @@ def chat():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000, debug=True)
+
