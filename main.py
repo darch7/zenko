@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify
 import requests
 import os
 import unicodedata
-from langdetect import detect  # pip install langdetect
 
 app = Flask(__name__)
 
@@ -19,6 +18,18 @@ def remove_accents(text):
     ascii_text = ascii_text.replace('¿','?').replace('¡','!')
     return ascii_text
 
+# Detección simple de idioma basada en palabras clave
+def detect_language_simple(text):
+    text_lower = text.lower()
+    # Inglés
+    if any(word in text_lower for word in ["the", "you", "is", "hello", "how", "what"]):
+        return "en"
+    # Francés
+    elif any(word in text_lower for word in ["le", "la", "bonjour", "merci", "comment", "quel"]):
+        return "fr"
+    else:
+        return "es"  # español por defecto
+
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json()
@@ -28,17 +39,12 @@ def chat():
     if user_id is None or user_msg.strip() == "":
         return jsonify({"error": "Falta UUID del usuario o mensaje vacío"})
 
-    # Detectamos idioma de la pregunta
-    try:
-        lang = detect(user_msg)
-    except:
-        lang = "es"  # español por defecto
+    # Detectamos idioma usando función simple
+    lang = detect_language_simple(user_msg)
 
     # --- Creamos la sesión si no existe ---
     if user_id not in sessions:
-        sessions[user_id] = {
-            "system_prompt": ""  # Lo definimos dinámicamente según idioma
-        }
+        sessions[user_id] = {"system_prompt": ""}  # Se define dinámicamente según idioma
 
     # --- Prompt del sistema según idioma ---
     if lang == "en":
