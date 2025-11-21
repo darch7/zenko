@@ -8,7 +8,7 @@ app = Flask(__name__)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 MODEL = "llama-3.1-8b-instant"
 
-# Guardamos sesiones por usuario, solo para mantener identidad
+# Guardamos sesiones por usuario
 sessions = {}
 
 # Función para eliminar acentos (solo para HUD SL)
@@ -18,61 +18,84 @@ def remove_accents(text):
     ascii_text = ascii_text.replace('¿','?').replace('¡','!')
     return ascii_text
 
-# Detección simple de idioma basada en palabras clave
-def detect_language_simple(text):
-    text_lower = text.lower()
-    # Inglés
-    if any(word in text_lower for word in ["the", "you", "is", "hello", "how", "what"]):
-        return "en"
-    # Francés
-    elif any(word in text_lower for word in ["le", "la", "bonjour", "merci", "comment", "quel"]):
-        return "fr"
+# ========================
+#  MANEJAR CAMBIO DE IDIOMA
+# ========================
+def set_language(user_id, lang):
+    if user_id not in sessions:
+        sessions[user_id] = {}
+
+    # Acepta es, en, fr — y si mandan algo raro, deja español
+    if lang in ["es", "en", "fr"]:
+        sessions[user_id]["lang"] = lang
     else:
-        return "es"  # español por defecto
+        sessions[user_id]["lang"] = "es"
+
+# ========================
+#  OBTENER LENGUAJE USUARIO
+# ========================
+def get_language(user_id):
+    if user_id in sessions and "lang" in sessions[user_id]:
+        return sessions[user_id]["lang"]
+    return "es"  # Default español
+
 
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json()
     user_id = data.get("user")
-    user_msg = data.get("msg", "")
+    user_msg = data.get("msg", "").strip()
 
-    if user_id is None or user_msg.strip() == "":
+    if not user_id or user_msg == "":
         return jsonify({"error": "Falta UUID del usuario o mensaje vacío"})
 
-    # Detectamos idioma usando función simple
-    lang = detect_language_simple(user_msg)
+    # ---------------------------------------
+    # 1) EL USUARIO QUIERE CAMBIAR EL IDIOMA
+    # Comandos desde el HUD: !lang es / !lang en / !lang fr
+    # ---------------------------------------
+    if user_msg.lower().startswith("!zenko"):
+        new_lang = user_msg.lower().split(" ")[1]
+        set_language(user_id, new_lang)
+        return jsonify({"reply": remove_accents(f"Idioma actualizado a {get_language(user_id)}")})
 
-    # --- Creamos la sesión si no existe ---
-    if user_id not in sessions:
-        sessions[user_id] = {"system_prompt": ""}  # Se define dinámicamente según idioma
+    # ---------------------------------------
+    # 2) OBTENER EL IDIOMA GUARDADO DEL USUARIO
+    # ---------------------------------------
+    lang = get_language(user_id)
 
-    # --- Prompt del sistema según idioma ---
+    # ---------------------------------------
+    # 3) DEFINIR PROMPT POR IDIOMA
+    # ---------------------------------------
     if lang == "en":
         system_prompt = (
             "You are Zenko, an ancient wise kitsune. "
-            "Answer in English exactly in the language of the question. "
-            "Your answers are clear, simple, and concise. "
+            "Answer strictly in English. "
+            "Your answers are clear and concise. "
             "Never break character. Never insult."
         )
+
     elif lang == "fr":
         system_prompt = (
             "Vous êtes Zenko, un ancien kitsune sage. "
-            "Répondez exactement en français selon la question. "
-            "Vos réponses sont claires, simples et concises. "
-            "Ne sortez jamais de votre personnage. Ne jamais insulter."
+            "Répondez strictement en français. "
+            "Vos réponses sont claires et concises. "
+            "Ne sortez jamais du personnage. N'insultez jamais."
         )
-    else:
+
+    else:  # español
         system_prompt = (
             "Eres Zenko, un antiguo kitsune sabio. "
-            "Responde exactamente en español según la pregunta. "
-            "Tus respuestas son claras, simples y concretas. "
+            "Responde estrictamente en español. "
+            "Tus respuestas son claras y concisas. "
             "Nunca rompes personaje. Nunca insultas."
         )
 
-    # Solo enviamos la última pregunta al modelo
+    # ---------------------------------------
+    # 4) ENVIAR MENSAJE AL MODELO
+    # ---------------------------------------
     messages = [
         {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_msg}  # texto ORIGINAL con acentos
+        {"role": "user", "content": user_msg}
     ]
 
     headers = {
@@ -95,12 +118,13 @@ def chat():
         res = r.json()
         reply = res["choices"][0]["message"]["content"]
 
-        # Solo eliminamos acentos para mostrar en HUD SL
+        # eliminar acentos SOLO PARA HUD SL
         reply_sl = remove_accents(reply)
         return jsonify({"reply": reply_sl})
 
     except Exception as e:
         return jsonify({"error": str(e), "raw": r.text})
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000, debug=True)
