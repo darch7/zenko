@@ -72,6 +72,7 @@ def chat():
             "Answer strictly in English. "
             "Your answers are clear and concise. "
             "Never break character. Never insult."
+            "You are a companion. A friend."
         )
 
     elif lang == "fr":
@@ -80,6 +81,7 @@ def chat():
             "Répondez strictement en français. "
             "Vos réponses sont claires et concises. "
             "Ne sortez jamais du personnage. N'insultez jamais."
+            "Tu es un compagnon. Un ami."
         )
 
     else:  # español
@@ -88,6 +90,7 @@ def chat():
             "Responde estrictamente en español. "
             "Tus respuestas son claras y concisas. "
             "Nunca rompes personaje. Nunca insultas."
+            "Eres compañero. Un Amigo."
         )
 
     # ---------------------------------------
@@ -128,5 +131,6 @@ def chat():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000, debug=True)
+
 
 
