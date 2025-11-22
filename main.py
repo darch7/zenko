@@ -3,6 +3,9 @@ import requests
 import os
 import unicodedata
 
+# Para parseo de HTML de eventos SL
+from bs4 import BeautifulSoup
+
 app = Flask(__name__)
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -39,62 +42,7 @@ def get_language(user_id):
     return "es"
 
 # ================================
-#   NUEVA FUNCIÓN DE HORA
-# ================================
-def get_time(place):
-    """
-    Hora exacta usando worldtimeapi.org
-    Gratis, estable y sin inventar minutos.
-    """
-    p = place.lower().strip()
-
-    zonas_fijas = {
-        "buenos aires": "America/Argentina/Buenos_Aires",
-        "caba": "America/Argentina/Buenos_Aires",
-        "argentina": "America/Argentina/Buenos_Aires",
-        "rosario": "America/Argentina/Buenos_Aires",
-        "cordoba": "America/Argentina/Cordoba",
-        "salta": "America/Argentina/Salta",
-        "uruguay": "America/Montevideo",
-        "montevideo": "America/Montevideo",
-        "chile": "America/Santiago",
-        "santiago": "America/Santiago",
-        "mexico": "America/Mexico_City",
-        "ciudad de mexico": "America/Mexico_City",
-        "miami": "America/New_York",
-        "new york": "America/New_York",
-        "madrid": "Europe/Madrid",
-        "españa": "Europe/Madrid",
-        "barcelona": "Europe/Madrid",
-        "tokio": "Asia/Tokyo",
-        "tokyo": "Asia/Tokyo",
-        "paris": "Europe/Paris",
-        "londres": "Europe/London",
-        "london": "Europe/London"
-    }
-
-    if p not in zonas_fijas:
-        return None, None, None, None
-
-    zona = zonas_fijas[p]
-
-    try:
-        url = f"https://worldtimeapi.org/api/timezone/{zona}"
-        data = requests.get(url, timeout=5).json()
-
-        # Ejemplo: "2025-11-22T06:14:55.123456-03:00"
-        dt = data.get("datetime", "")
-        utc_offset = data.get("utc_offset", "")
-
-        # Hora EXACTA HH:MM
-        hora = dt[11:16]
-
-        return hora, zona, utc_offset, ""
-    except:
-        return None, None, None, None
-
-# ================================
-#     RESTO DE FUNCIONES
+#       FUNCIONES EXTERNAS
 # ================================
 def get_weather(city):
     url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&units=metric&lang=es&appid={OPENWEATHER_API_KEY}"
@@ -140,6 +88,57 @@ def convert_currency(amount, from_, to_):
     return remove_accents(f"No pude convertir de {from_} a {to_}.")
 
 # ================================
+#     FUNCIONES SECOND LIFE
+# ================================
+def get_sl_events():
+    """
+    Devuelve eventos recientes o próximos de Second Life.
+    """
+    events = []
+
+    try:
+        url = "https://secondlife.com/destinations/events"
+        res = requests.get(url, timeout=5)
+        if res.status_code == 200:
+            soup = BeautifulSoup(res.text, 'html.parser')
+            items = soup.find_all("h3", class_="event-title")
+            for i, item in enumerate(items[:5]):  # solo primeros 5
+                events.append(remove_accents(f"- {item.text.strip()}"))
+    except:
+        events.append("No pude obtener eventos recientes de Second Life.")
+
+    if not events:
+        events.append("No se encontraron eventos activos de Second Life.")
+
+    return "Eventos recientes en Second Life:\n" + "\n".join(events)
+
+def get_sl_sim_info(sim_name):
+    """
+    Devuelve información básica de un sim de SL.
+    """
+    # Aquí se podría usar SLAPI u otra fuente, por ahora ejemplo estático
+    sim_data = {
+        "harvest": "Sim de roleplay con actividades agrícolas.",
+        "gothic": "Sim temática gótica con música y eventos nocturnos.",
+        "rpgworld": "Sim RPG con quests y rol en vivo."
+    }
+    info = sim_data.get(sim_name.lower(), None)
+    if info:
+        return remove_accents(f"Información del sim {sim_name}: {info}")
+    return remove_accents(f"No encontré información sobre el sim {sim_name}.")
+
+def get_sl_shops():
+    """
+    Devuelve tiendas populares de Second Life.
+    """
+    shops = [
+        "- Marketplace SL: https://marketplace.secondlife.com",
+        "- SL Fashion Hub: https://slfashionhub.com",
+        "- The Arcade SL: https://sl-arcade.com"
+    ]
+    return "Tiendas populares en Second Life:\n" + "\n".join(shops)
+
+# ================================
 #       ENDPOINT PRINCIPAL
 # ================================
 @app.route("/chat", methods=["POST"])
@@ -149,39 +148,24 @@ def chat():
     user_msg = data.get("msg", "").strip()
     if not user_id or user_msg == "":
         return jsonify({"error": "Falta UUID del usuario o mensaje vacio"})
-    
+
     user_msg_lower = user_msg.lower()
-    
+
     # Cambio de idioma
     if user_msg_lower.startswith("@zenko"):
         parts = user_msg_lower.split(" ")
         new_lang = parts[1] if len(parts) > 1 else "es"
         set_language(user_id, new_lang)
         return jsonify({"reply": remove_accents(f"Idioma actualizado a {get_language(user_id)}")})
-    
+
     lang = get_language(user_id)
 
-    # ------------------------------
-    # RESPUESTA DE HORA
-    # ------------------------------
-    if user_msg_lower.startswith("hora "):
-        place = user_msg[5:].strip()
-        hora, tz_name, utc_offset, _ = get_time(place)
-        if hora:
-            reply_text = (
-                f"Zenko Kitsune: Mi amigo, he consultado los espiritus del tiempo. "
-                f"En {place}, ahora son exactamente las {hora} (zona {tz_name}, UTC{utc_offset})."
-            )
-        else:
-            reply_text = f"Zenko Kitsune: No pude determinar la hora exacta de {place}."
-        return jsonify({"reply": remove_accents(reply_text)})
-
     # Clima
-    elif user_msg_lower.startswith("clima "):
+    if user_msg_lower.startswith("clima "):
         city = user_msg[6:]
         return jsonify({"reply": get_weather(city)})
 
-    # Noticias
+    # Noticias generales
     elif user_msg_lower.startswith("noticias"):
         topic = user_msg[9:].strip() or "general"
         return jsonify({"reply": get_news(topic)})
@@ -208,6 +192,19 @@ def chat():
                 return jsonify({"reply": "Cantidad invalida."})
         else:
             return jsonify({"reply": "Formato: moneda <cantidad> <de> <a>"})
+
+    # ===========================================
+    #       FUNCIONES SECOND LIFE
+    # ===========================================
+    elif user_msg_lower.startswith("eventos sl"):
+        return jsonify({"reply": get_sl_events()})
+
+    elif user_msg_lower.startswith("sim "):
+        sim_name = user_msg[4:]
+        return jsonify({"reply": get_sl_sim_info(sim_name)})
+
+    elif user_msg_lower.startswith("tiendas sl"):
+        return jsonify({"reply": get_sl_shops()})
 
     # ===========================================
     #     PROMPT ORIGINAL COMPLETO DE ZENKO
