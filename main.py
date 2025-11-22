@@ -43,8 +43,9 @@ def get_language(user_id):
 
 # --- APIs externas ---
 
+from datetime import datetime
+
 def get_time(place):
-    # Normalizamos nombre para WorldTimeAPI
     place_norm = place.replace(" ", "_").title()
     zonas = [
         f"Europe/{place_norm}",
@@ -58,15 +59,14 @@ def get_time(place):
     for zona in zonas:
         try:
             url = f"https://worldtimeapi.org/api/timezone/{zona}"
-            r = requests.get(url)
+            r = requests.get(url, timeout=5)
             if r.status_code == 200:
                 data = r.json()
-                datetime_str = data.get("datetime")  # ej: '2025-11-22T08:42:00.123456+00:00'
-                utc_offset = data.get("utc_offset", "+00:00")  # ej: '-03:00'
+                datetime_str = data.get("datetime")  # ej: '2025-11-22T05:48:12.345678-03:00'
 
-                dt = datetime.fromisoformat(datetime_str)  # convierte string a datetime
-                # dt ya tiene offset incluido
-                hora_local = dt.strftime("%H:%M")  # 24h, si quieres 12h: "%I:%M %p"
+                # Convertimos directamente a datetime aware con offset incluido
+                dt = datetime.fromisoformat(datetime_str)
+                hora_local = dt.strftime("%H:%M")  # 24h
                 return remove_accents(f"La hora en {place} es {hora_local}.")
         except:
             continue
@@ -263,5 +263,6 @@ def chat():
 
     except Exception as e:
         return jsonify({"error": str(e), "raw": getattr(r, "text", "")})
+
 
 
