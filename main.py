@@ -40,6 +40,30 @@ def get_language(user_id):
     return "es"
 
 # --- APIs externas ---
+def get_time(place):
+    # Intento directo: lugar como "tokyo", "madrid", etc.
+    place_norm = place.replace(" ", "_").title()
+
+    # Lista de zonas más comunes que probamos automáticamente
+    zonas = [
+        f"Europe/{place_norm}",
+        f"America/{place_norm}",
+        f"Asia/{place_norm}",
+        f"Africa/{place_norm}",
+        f"Australia/{place_norm}",
+        f"Pacific/{place_norm}"
+    ]
+
+    for zona in zonas:
+        url = f"https://worldtimeapi.org/api/timezone/{zona}"
+        r = requests.get(url)
+        
+        if r.status_code == 200:
+            data = r.json()
+            hora = data.get("datetime", "")[11:16]
+            return remove_accents(f"La hora en {place} es {hora}.")
+
+    return remove_accents(f"No pude obtener la hora de {place}.")
 
 def get_weather(city):
     url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&units=metric&lang=es&appid={OPENWEATHER_API_KEY}"
@@ -113,6 +137,9 @@ def chat():
     if user_msg_lower.startswith("clima "):
         city = user_msg[6:]
         return jsonify({"reply": get_weather(city)})
+    elif user_msg_lower.startswith("hora "):
+    place = user_msg[5:]
+    return jsonify({"reply": get_time(place)})    
     elif user_msg_lower.startswith("noticias"):
         topic = user_msg[9:].strip() or "general"
         return jsonify({"reply": get_news(topic)})
@@ -217,5 +244,6 @@ def chat():
         return jsonify({"reply": reply_sl})
     except Exception as e:
         return jsonify({"error": str(e), "raw": getattr(r, "text", "")})
+
 
 
