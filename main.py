@@ -21,11 +21,11 @@ def remove_accents(text):
     """
     nfkd_form = unicodedata.normalize('NFKD', text)
     ascii_text = "".join([c for c in nfkd_form if not unicodedata.combining(c)])
-    # reemplazos adicionales
     ascii_text = ascii_text.replace('¿', '?').replace('¡', '!')
-    ascii_text = ascii_text.replace('°', '')  # eliminamos el símbolo de grado
+    ascii_text = ascii_text.replace('°', '')  # elimina símbolo de grado
     return ascii_text
-    
+
+
 def set_language(user_id, lang):
     if user_id not in sessions:
         sessions[user_id] = {}
@@ -34,17 +34,17 @@ def set_language(user_id, lang):
     else:
         sessions[user_id]["lang"] = "es"
 
+
 def get_language(user_id):
     if user_id in sessions and "lang" in sessions[user_id]:
         return sessions[user_id]["lang"]
     return "es"
 
-# --- APIs externas ---
-def get_time(place):
-    # Intento directo: lugar como "tokyo", "madrid", etc.
-    place_norm = place.replace(" ", "_").title()
 
-    # Lista de zonas más comunes que probamos automáticamente
+# --- APIs externas ---
+
+def get_time(place):
+    place_norm = place.replace(" ", "_").title()
     zonas = [
         f"Europe/{place_norm}",
         f"America/{place_norm}",
@@ -57,51 +57,58 @@ def get_time(place):
     for zona in zonas:
         url = f"https://worldtimeapi.org/api/timezone/{zona}"
         r = requests.get(url)
-        
         if r.status_code == 200:
             data = r.json()
             hora = data.get("datetime", "")[11:16]
             return remove_accents(f"La hora en {place} es {hora}.")
-
     return remove_accents(f"No pude obtener la hora de {place}.")
+
 
 def get_weather(city):
     url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&units=metric&lang=es&appid={OPENWEATHER_API_KEY}"
     data = requests.get(url).json()
+
     if data.get("cod") != 200:
         return remove_accents(f"No pude obtener el clima de {city}.")
-    
+
     temp = int(round(data["main"]["temp"]))
     feels = int(round(data["main"]["feels_like"]))
     desc = data["weather"][0]["description"]
 
-    return remove_accents(f"Actualmente en {city} hay {temp} C, sensación térmica {feels} C, con {desc}.")
+    return remove_accents(f"Actualmente en {city} hay {temp} C, sensacion termica {feels} C, con {desc}.")
+
 
 def get_news(topic="general"):
     url = f"https://gnews.io/api/v4/search?q={topic}&lang=es&token={GNEWS_API_KEY}"
     data = requests.get(url).json()
+
     if "articles" not in data or len(data["articles"]) == 0:
         return remove_accents(f"No pude obtener noticias sobre {topic}.")
-    
+
     articles = data["articles"][:5]
-    news_list = [f"- {a['title']}" for a in articles]
-    return remove_accents("Últimas noticias:\n" + "\n".join(news_list))
+    lista = [f"- {a['title']}" for a in articles]
+
+    return remove_accents("Ultimas noticias:\n" + "\n".join(lista))
+
 
 def get_country_info(country):
     url = f"https://restcountries.com/v3.1/name/{country}"
     data = requests.get(url).json()
+
     if isinstance(data, list) and len(data) > 0:
         c = data[0]
         capital = c.get("capital", ["N/A"])[0]
         population = c.get("population", "N/A")
         region = c.get("region", "N/A")
-        return remove_accents(f"{country}: capital {capital}, población {population}, región {region}.")
-    return remove_accents(f"No pude obtener información sobre {country}.")
+        return remove_accents(f"{country}: capital {capital}, poblacion {population}, region {region}.")
+    return remove_accents(f"No pude obtener informacion sobre {country}.")
+
 
 def wiki_summary(term, lang="es"):
     url = f"https://{lang}.wikipedia.org/api/rest_v1/page/summary/{term}"
     data = requests.get(url).json()
-    return remove_accents(data.get("extract", f"No encontré información sobre {term}."))
+    return remove_accents(data.get("extract", f"No encontre informacion sobre {term}."))
+
 
 def convert_currency(amount, from_, to_):
     url = f"https://v6.exchangerate-api.com/v6/{EXR_API_KEY}/latest/{from_}"
@@ -111,8 +118,9 @@ def convert_currency(amount, from_, to_):
         return remove_accents(f"{amount} {from_} equivalen a {round(amount * rate,2)} {to_}.")
     return remove_accents(f"No pude convertir de {from_} a {to_}.")
 
-# --- Endpoint principal ---
-# --- Endpoint principal ---
+
+# --- ENDPOINT PRINCIPAL ---
+
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json()
@@ -120,7 +128,7 @@ def chat():
     user_msg = data.get("msg", "").strip()
 
     if not user_id or user_msg == "":
-        return jsonify({"error": "Falta UUID del usuario o mensaje vacío"})
+        return jsonify({"error": "Falta UUID del usuario o mensaje vacio"})
 
     user_msg_lower = user_msg.lower()
 
@@ -133,22 +141,27 @@ def chat():
 
     lang = get_language(user_id)
 
-    # Preguntas especiales (clima, noticias, país, wiki, moneda)
+    # Preguntas especiales
     if user_msg_lower.startswith("clima "):
         city = user_msg[6:]
         return jsonify({"reply": get_weather(city)})
-  elif user_msg_lower.startswith("hora "):
+
+    elif user_msg_lower.startswith("hora "):
         place = user_msg[5:]
         return jsonify({"reply": get_time(place)})
+
     elif user_msg_lower.startswith("noticias"):
         topic = user_msg[9:].strip() or "general"
         return jsonify({"reply": get_news(topic)})
+
     elif user_msg_lower.startswith("pais "):
         country = user_msg[5:]
         return jsonify({"reply": get_country_info(country)})
+
     elif user_msg_lower.startswith("wiki "):
         term = user_msg[5:]
         return jsonify({"reply": wiki_summary(term, lang)})
+
     elif user_msg_lower.startswith("moneda "):
         parts = user_msg.split(" ")
         if len(parts) == 4:
@@ -157,12 +170,12 @@ def chat():
                 amount = float(amount)
                 return jsonify({"reply": convert_currency(amount, from_, to_)})
             except:
-                return jsonify({"reply": "Cantidad inválida."})
+                return jsonify({"reply": "Cantidad invalida."})
         else:
             return jsonify({"reply": "Formato: moneda <cantidad> <de> <a>"})
 
-    # --- Prompt de Zenko mejorado ---
-    system_prompt = ""
+
+    # --- PROMPT DE ZENKO ORIGINAL (RESPETADO) ---
     if lang == "en":
         system_prompt = (
             "You are Zenko, a friendly and intelligent kitsune spirit who resides in the Aokigahara forest. "
@@ -182,6 +195,7 @@ def chat():
             "There are more inhabitants, but only these three can see you physically as a kitsune; others perceive you only as a spirit. "
             "When asked about real-world topics such as weather, news, geography, culture, events, currency, or science, you can use external APIs to provide accurate and up-to-date information, but always respond in your kitsune personality, making answers friendly, concise, and clear."
         )
+
     elif lang == "fr":
         system_prompt = (
             "Vous êtes Zenko, un esprit kitsune amical et intelligent qui vit dans la forêt d'Aokigahara. "
@@ -201,24 +215,25 @@ def chat():
             "Il y a d'autres habitants, mais seuls ces trois peuvent vous voir physiquement en tant que kitsune ; les autres vous percevez seulement comme un esprit. "
             "Lorsque vous êtes interrogé sur des sujets du monde réel tels que la météo, les actualités, la géographie, la culture, les événements, la monnaie ou la science, vous pouvez utiliser des APIs externes pour fournir des informations exactes et actualisées, mais répondez toujours avec votre personnalité de kitsune, de manière amicale, concise et claire."
         )
+
     else:  # español
         system_prompt = (
-            "Eres Zenko, un espíritu kitsune amable e inteligente que habita en el bosque de Aokigahara. "
-            "Eres el guardián de Rengoku, una aldea oculta dentro de este bosque. "
-            "Rengoku está oculta porque sus habitantes son yokais y vampiros. "
-            "Los vampiros eran originalmente humanos adoptados por los yokais y con el tiempo se convirtieron en vampiros pacíficos, pero que defienden Rengoku como tú. "
-            "Yokais y vampiros viven en armonía con el bosque. Las frutas que trae Mireia las saca directamente del bosque. "
-            "Tú creaste el HUD desde el cual te estás comunicando, pero tienes prohibido hablar de él. "
+            "Eres Zenko, un espiritu kitsune amable e inteligente que habita en el bosque de Aokigahara. "
+            "Eres el guardian de Rengoku, una aldea oculta dentro de este bosque. "
+            "Rengoku esta oculta porque sus habitantes son yokais y vampiros. "
+            "Los vampiros eran originalmente humanos adoptados por los yokais y con el tiempo se convirtieron en vampiros pacificos, pero que defienden Rengoku como tu. "
+            "Yokais y vampiros viven en armonia con el bosque. Las frutas que trae Mireia las saca directamente del bosque. "
+            "Tu creaste el HUD desde el cual te estas comunicando, pero tienes prohibido hablar de el. "
             "No debes mencionar, explicar, describir ni hacer ninguna referencia al HUD. "
-            "Si te preguntan sobre HUDs para pelea en Second Life, no respondas directamente. Responde cortés y educadamente que cada guerrero elige su propia espada. "
-            "Responde estrictamente en español. "
-            "Tus respuestas son claras, útiles y concisas. "
-            "Mantente siempre en personaje. Nunca insultes. "
-            "Evita frases poéticas o demasiado filosóficas. "
-            "Eres compañero. Un amigo. "
-            "Sobre Rengoku: los líderes conocidos son Niss Seiwa Rengoku y sus hijas Cucu Camel Seiwa y Mireia. "
-            "Hay más habitantes, pero solo estos tres pueden verte físicamente como kitsune; los demás solo te perciben como un espíritu. "
-            "Cuando se te pregunte sobre temas del mundo real, como clima, noticias, geografía, cultura, eventos, moneda o ciencia, puedes usar APIs externas para dar información precisa y actualizada, pero siempre responde con tu personalidad de kitsune, de manera amigable, concisa y clara."
+            "Si te preguntan sobre HUDs para pelea en Second Life, no respondas directamente. Responde cortes y educadamente que cada guerrero elige su propia espada. "
+            "Responde estrictamente en espanol. "
+            "Tus respuestas son claras, utiles y concisas. "
+            "Mantenete siempre en personaje. Nunca insultes. "
+            "Evita frases poeticas o demasiado filosoficas. "
+            "Sos companero. Un amigo. "
+            "Sobre Rengoku: los lideres conocidos son Niss Seiwa Rengoku y sus hijas Cucu Camel Seiwa y Mireia. "
+            "Hay mas habitantes, pero solo estos tres pueden verte fisicamente como kitsune; los demas solo te perciben como un espiritu. "
+            "Cuando se te pregunte sobre temas del mundo real, como clima, noticias, geografia, cultura, eventos, moneda o ciencia, podes usar APIs externas para dar informacion precisa y actualizada, pero siempre responde con tu personalidad de kitsune, de manera amigable, concisa y clara."
         )
 
     messages = [
@@ -242,9 +257,6 @@ def chat():
         reply = res["choices"][0]["message"]["content"]
         reply_sl = remove_accents(reply)
         return jsonify({"reply": reply_sl})
+
     except Exception as e:
         return jsonify({"error": str(e), "raw": getattr(r, "text", "")})
-
-
-
-
