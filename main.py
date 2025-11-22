@@ -41,10 +41,13 @@ def get_weather(city):
     data = requests.get(url).json()
     if data.get("cod") != 200:
         return f"No pude obtener el clima de {city}."
-    temp = data["main"]["temp"]
+    
+    temp = int(round(data["main"]["temp"]))       # temperatura redondeada
+    feels = int(round(data["main"]["feels_like"])) # sensación térmica
     desc = data["weather"][0]["description"]
-    feels = data["main"]["feels_like"]
-    return f"Actualmente en {city} hay {temp}°C, sensación térmica {feels}°C, con {desc}."
+
+    # eliminamos el símbolo ° y dejamos solo el número
+    return f"Actualmente en {city} hay {temp} C, sensación térmica {feels} C, con {desc}."
 
 def get_news(topic="general"):
     url = f"https://gnews.io/api/v4/search?q={topic}&lang=es&token={GNEWS_API_KEY}"
@@ -209,3 +212,4 @@ def chat():
         return jsonify({"reply": reply_sl})
     except Exception as e:
         return jsonify({"error": str(e), "raw": getattr(r, "text", "")})
+
