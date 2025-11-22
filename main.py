@@ -3,6 +3,9 @@ import requests
 import os
 import unicodedata
 from datetime import datetime
+import pytz
+from geopy.geocoders import Nominatim
+from timezonefinder import TimezoneFinder
 
 app = Flask(__name__)
 
@@ -42,49 +45,24 @@ def get_language(user_id):
 # --- APIs externas ---
 
 def get_time(place):
-    import unicodedata
-
-    def clean(text):
-        # Normaliza acentos, espacios y mayúsculas
-        text = unicodedata.normalize('NFKD', text)
-        text = "".join([c for c in text if not unicodedata.combining(c)])
-        return text.lower().replace(" ", "_")
-
-    place_clean = clean(place)
-
-    # Obtenemos todas las zonas horarias disponibles
     try:
-        r = requests.get("https://worldtimeapi.org/api/timezone", timeout=5)
-        r.raise_for_status()
-        zonas = r.json()
-    except Exception:
-        return remove_accents(f"No pude obtener las zonas horarias para {place}.")
+        geolocator = Nominatim(user_agent="zenko_hud")
+        location = geolocator.geocode(place)
+        if not location:
+            return remove_accents(f"No pude encontrar la hora de {place}.")
 
-    # Filtramos coincidencias parciales con la ciudad o país
-    matches = [z for z in zonas if place_clean in clean(z)]
-    if not matches:
-        return remove_accents(f"No pude encontrar la hora de {place}.")
+        tf = TimezoneFinder()
+        tz_name = tf.timezone_at(lng=location.longitude, lat=location.latitude)
+        if not tz_name:
+            return remove_accents(f"No pude determinar la zona horaria de {place}.")
 
-    # Tomamos la primera coincidencia
-    zona = matches[0]
-
-    try:
-        r2 = requests.get(f"https://worldtimeapi.org/api/timezone/{zona}", timeout=5)
-        r2.raise_for_status()
-        data = r2.json()
-        datetime_str = data.get("datetime", "")
-        if not datetime_str:
-            return remove_accents(f"No pude obtener la hora de {place}.")
-
-        # Convertimos a objeto datetime
-        dt = datetime.fromisoformat(datetime_str[:-1])  # quitar 'Z' si existe
-        # Formato 12h AM/PM
+        tz = pytz.timezone(tz_name)
+        dt = datetime.now(tz)
         hora_formateada = dt.strftime("%I:%M %p")
-        # Zona horaria legible
-        tz_abbr = data.get("abbreviation", "")
-        return remove_accents(f"La hora en {place} es {hora_formateada} ({tz_abbr}).")
-    except Exception:
-        return remove_accents(f"No pude obtener la hora de {place}.")
+        return remove_accents(f"La hora en {place} es {hora_formateada} ({tz.tzname(dt)}).")
+
+    except Exception as e:
+        return remove_accents(f"No pude obtener la hora de {place}. Error: {e}")
 
 def get_weather(city):
     url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&units=metric&lang=es&appid={OPENWEATHER_API_KEY}"
