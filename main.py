@@ -46,7 +46,6 @@ def get_time(place):
     Hora exacta usando worldtimeapi.org
     Gratis, estable y sin inventar minutos.
     """
-
     p = place.lower().strip()
 
     zonas_fijas = {
@@ -56,26 +55,19 @@ def get_time(place):
         "rosario": "America/Argentina/Buenos_Aires",
         "cordoba": "America/Argentina/Cordoba",
         "salta": "America/Argentina/Salta",
-
         "uruguay": "America/Montevideo",
         "montevideo": "America/Montevideo",
-
         "chile": "America/Santiago",
         "santiago": "America/Santiago",
-
         "mexico": "America/Mexico_City",
         "ciudad de mexico": "America/Mexico_City",
-
         "miami": "America/New_York",
         "new york": "America/New_York",
-
         "madrid": "Europe/Madrid",
         "españa": "Europe/Madrid",
         "barcelona": "Europe/Madrid",
-
         "tokio": "Asia/Tokyo",
         "tokyo": "Asia/Tokyo",
-
         "paris": "Europe/Paris",
         "londres": "Europe/London",
         "london": "Europe/London"
@@ -94,7 +86,7 @@ def get_time(place):
         dt = data.get("datetime", "")
         utc_offset = data.get("utc_offset", "")
 
-        # Hora EXACTA HH:MM sin inventar nada
+        # Hora EXACTA HH:MM
         hora = dt[11:16]
 
         return hora, zona, utc_offset, ""
@@ -301,6 +293,3 @@ def chat():
         return jsonify({"reply": reply_sl})
     except Exception as e:
         return jsonify({"error": str(e), "raw": getattr(r, "text", "")})
-
-
-
