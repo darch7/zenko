@@ -2,8 +2,7 @@ from flask import Flask, request, jsonify
 import requests
 import os
 import unicodedata
-from datetime import datetime
-import pytz
+from datetime import datetime, timedelta
 from geopy.geocoders import Nominatim
 from timezonefinder import TimezoneFinder
 
@@ -45,7 +44,7 @@ def get_language(user_id):
 # --- APIs externas ---
 
 def get_time(place):
-    # Transformamos el nombre de la ciudad a formato de WorldTimeAPI
+    # Normalizamos nombre para WorldTimeAPI
     place_norm = place.replace(" ", "_").title()
     zonas = [
         f"Europe/{place_norm}",
@@ -62,23 +61,13 @@ def get_time(place):
             r = requests.get(url)
             if r.status_code == 200:
                 data = r.json()
-                datetime_str = data.get("datetime", "")
-                utc_offset = data.get("utc_offset", "+00:00")  # ej: "-03:00"
+                datetime_str = data.get("datetime")  # ej: '2025-11-22T08:42:00.123456+00:00'
+                utc_offset = data.get("utc_offset", "+00:00")  # ej: '-03:00'
 
-                # Parseamos hora
-                hora_utc = datetime_str[11:16]
-                # Ajustamos según el offset
-                offset_sign = 1 if utc_offset[0] == "+" else -1
-                offset_hours = int(utc_offset[1:3])
-                offset_minutes = int(utc_offset[4:6])
-                dt_obj = datetime.strptime(hora_utc, "%H:%M")
-                dt_obj = dt_obj.replace(
-                    hour=(dt_obj.hour + offset_sign * offset_hours) % 24,
-                    minute=(dt_obj.minute + offset_sign * offset_minutes) % 60
-                )
-
-                hora_formateada = dt_obj.strftime("%I:%M %p")
-                return remove_accents(f"La hora en {place} es {hora_formateada} ({zona}).")
+                dt = datetime.fromisoformat(datetime_str)  # convierte string a datetime
+                # dt ya tiene offset incluido
+                hora_local = dt.strftime("%H:%M")  # 24h, si quieres 12h: "%I:%M %p"
+                return remove_accents(f"La hora en {place} es {hora_local}.")
         except:
             continue
 
@@ -274,4 +263,5 @@ def chat():
 
     except Exception as e:
         return jsonify({"error": str(e), "raw": getattr(r, "text", "")})
+
 
