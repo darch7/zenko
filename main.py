@@ -137,9 +137,9 @@ def chat():
     if user_msg_lower.startswith("clima "):
         city = user_msg[6:]
         return jsonify({"reply": get_weather(city)})
-    elif user_msg_lower.startswith("hora "):
-    place = user_msg[5:]
-    return jsonify({"reply": get_time(place)})    
+  elif user_msg_lower.startswith("hora "):
+        place = user_msg[5:]
+        return jsonify({"reply": get_time(place)})
     elif user_msg_lower.startswith("noticias"):
         topic = user_msg[9:].strip() or "general"
         return jsonify({"reply": get_news(topic)})
@@ -244,6 +244,7 @@ def chat():
         return jsonify({"reply": reply_sl})
     except Exception as e:
         return jsonify({"error": str(e), "raw": getattr(r, "text", "")})
+
 
 
 
