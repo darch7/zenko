@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 import requests
 import os
 import unicodedata
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -25,7 +26,6 @@ def remove_accents(text):
     ascii_text = ascii_text.replace('°', '')  # elimina símbolo de grado
     return ascii_text
 
-
 def set_language(user_id, lang):
     if user_id not in sessions:
         sessions[user_id] = {}
@@ -34,35 +34,57 @@ def set_language(user_id, lang):
     else:
         sessions[user_id]["lang"] = "es"
 
-
 def get_language(user_id):
     if user_id in sessions and "lang" in sessions[user_id]:
         return sessions[user_id]["lang"]
     return "es"
 
-
 # --- APIs externas ---
 
 def get_time(place):
-    place_norm = place.replace(" ", "_").title()
-    zonas = [
-        f"Europe/{place_norm}",
-        f"America/{place_norm}",
-        f"Asia/{place_norm}",
-        f"Africa/{place_norm}",
-        f"Australia/{place_norm}",
-        f"Pacific/{place_norm}"
-    ]
+    import unicodedata
 
-    for zona in zonas:
-        url = f"https://worldtimeapi.org/api/timezone/{zona}"
-        r = requests.get(url)
-        if r.status_code == 200:
-            data = r.json()
-            hora = data.get("datetime", "")[11:16]
-            return remove_accents(f"La hora en {place} es {hora}.")
-    return remove_accents(f"No pude obtener la hora de {place}.")
+    def clean(text):
+        # Normaliza acentos, espacios y mayúsculas
+        text = unicodedata.normalize('NFKD', text)
+        text = "".join([c for c in text if not unicodedata.combining(c)])
+        return text.lower().replace(" ", "_")
 
+    place_clean = clean(place)
+
+    # Obtenemos todas las zonas horarias disponibles
+    try:
+        r = requests.get("https://worldtimeapi.org/api/timezone", timeout=5)
+        r.raise_for_status()
+        zonas = r.json()
+    except Exception:
+        return remove_accents(f"No pude obtener las zonas horarias para {place}.")
+
+    # Filtramos coincidencias parciales con la ciudad o país
+    matches = [z for z in zonas if place_clean in clean(z)]
+    if not matches:
+        return remove_accents(f"No pude encontrar la hora de {place}.")
+
+    # Tomamos la primera coincidencia
+    zona = matches[0]
+
+    try:
+        r2 = requests.get(f"https://worldtimeapi.org/api/timezone/{zona}", timeout=5)
+        r2.raise_for_status()
+        data = r2.json()
+        datetime_str = data.get("datetime", "")
+        if not datetime_str:
+            return remove_accents(f"No pude obtener la hora de {place}.")
+
+        # Convertimos a objeto datetime
+        dt = datetime.fromisoformat(datetime_str[:-1])  # quitar 'Z' si existe
+        # Formato 12h AM/PM
+        hora_formateada = dt.strftime("%I:%M %p")
+        # Zona horaria legible
+        tz_abbr = data.get("abbreviation", "")
+        return remove_accents(f"La hora en {place} es {hora_formateada} ({tz_abbr}).")
+    except Exception:
+        return remove_accents(f"No pude obtener la hora de {place}.")
 
 def get_weather(city):
     url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&units=metric&lang=es&appid={OPENWEATHER_API_KEY}"
@@ -77,7 +99,6 @@ def get_weather(city):
 
     return remove_accents(f"Actualmente en {city} hay {temp} C, sensacion termica {feels} C, con {desc}.")
 
-
 def get_news(topic="general"):
     url = f"https://gnews.io/api/v4/search?q={topic}&lang=es&token={GNEWS_API_KEY}"
     data = requests.get(url).json()
@@ -89,7 +110,6 @@ def get_news(topic="general"):
     lista = [f"- {a['title']}" for a in articles]
 
     return remove_accents("Ultimas noticias:\n" + "\n".join(lista))
-
 
 def get_country_info(country):
     url = f"https://restcountries.com/v3.1/name/{country}"
@@ -103,12 +123,10 @@ def get_country_info(country):
         return remove_accents(f"{country}: capital {capital}, poblacion {population}, region {region}.")
     return remove_accents(f"No pude obtener informacion sobre {country}.")
 
-
 def wiki_summary(term, lang="es"):
     url = f"https://{lang}.wikipedia.org/api/rest_v1/page/summary/{term}"
     data = requests.get(url).json()
     return remove_accents(data.get("extract", f"No encontre informacion sobre {term}."))
-
 
 def convert_currency(amount, from_, to_):
     url = f"https://v6.exchangerate-api.com/v6/{EXR_API_KEY}/latest/{from_}"
@@ -117,7 +135,6 @@ def convert_currency(amount, from_, to_):
     if rate:
         return remove_accents(f"{amount} {from_} equivalen a {round(amount * rate,2)} {to_}.")
     return remove_accents(f"No pude convertir de {from_} a {to_}.")
-
 
 # --- ENDPOINT PRINCIPAL ---
 
@@ -173,7 +190,6 @@ def chat():
                 return jsonify({"reply": "Cantidad invalida."})
         else:
             return jsonify({"reply": "Formato: moneda <cantidad> <de> <a>"})
-
 
     # --- PROMPT DE ZENKO ORIGINAL (RESPETADO) ---
     if lang == "en":
