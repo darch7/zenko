@@ -16,11 +16,16 @@ EXR_API_KEY = os.getenv("EXR_API_KEY")
 sessions = {}
 
 def remove_accents(text):
+    """
+    Quita acentos, signos raros y caracteres problemáticos para SL.
+    """
     nfkd_form = unicodedata.normalize('NFKD', text)
     ascii_text = "".join([c for c in nfkd_form if not unicodedata.combining(c)])
-    ascii_text = ascii_text.replace('¿','?').replace('¡','!')
+    # reemplazos adicionales
+    ascii_text = ascii_text.replace('¿', '?').replace('¡', '!')
+    ascii_text = ascii_text.replace('°', '')  # eliminamos el símbolo de grado
     return ascii_text
-
+    
 def set_language(user_id, lang):
     if user_id not in sessions:
         sessions[user_id] = {}
@@ -40,23 +45,23 @@ def get_weather(city):
     url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&units=metric&lang=es&appid={OPENWEATHER_API_KEY}"
     data = requests.get(url).json()
     if data.get("cod") != 200:
-        return f"No pude obtener el clima de {city}."
+        return remove_accents(f"No pude obtener el clima de {city}.")
     
-    temp = int(round(data["main"]["temp"]))       # temperatura redondeada
-    feels = int(round(data["main"]["feels_like"])) # sensación térmica
+    temp = int(round(data["main"]["temp"]))
+    feels = int(round(data["main"]["feels_like"]))
     desc = data["weather"][0]["description"]
 
-    # eliminamos el símbolo ° y dejamos solo el número
-    return f"Actualmente en {city} hay {temp} C, sensación térmica {feels} C, con {desc}."
+    return remove_accents(f"Actualmente en {city} hay {temp} C, sensación térmica {feels} C, con {desc}.")
 
 def get_news(topic="general"):
     url = f"https://gnews.io/api/v4/search?q={topic}&lang=es&token={GNEWS_API_KEY}"
     data = requests.get(url).json()
     if "articles" not in data or len(data["articles"]) == 0:
-        return f"No pude obtener noticias sobre {topic}."
+        return remove_accents(f"No pude obtener noticias sobre {topic}.")
+    
     articles = data["articles"][:5]
     news_list = [f"- {a['title']}" for a in articles]
-    return "Últimas noticias:\n" + "\n".join(news_list)
+    return remove_accents("Últimas noticias:\n" + "\n".join(news_list))
 
 def get_country_info(country):
     url = f"https://restcountries.com/v3.1/name/{country}"
@@ -66,21 +71,21 @@ def get_country_info(country):
         capital = c.get("capital", ["N/A"])[0]
         population = c.get("population", "N/A")
         region = c.get("region", "N/A")
-        return f"{country}: capital {capital}, población {population}, región {region}."
-    return f"No pude obtener información sobre {country}."
+        return remove_accents(f"{country}: capital {capital}, población {population}, región {region}.")
+    return remove_accents(f"No pude obtener información sobre {country}.")
 
 def wiki_summary(term, lang="es"):
     url = f"https://{lang}.wikipedia.org/api/rest_v1/page/summary/{term}"
     data = requests.get(url).json()
-    return data.get("extract", f"No encontré información sobre {term}.")
+    return remove_accents(data.get("extract", f"No encontré información sobre {term}."))
 
 def convert_currency(amount, from_, to_):
     url = f"https://v6.exchangerate-api.com/v6/{EXR_API_KEY}/latest/{from_}"
     data = requests.get(url).json()
     rate = data.get("conversion_rates", {}).get(to_)
     if rate:
-        return f"{amount} {from_} equivalen a {round(amount * rate,2)} {to_}."
-    return f"No pude convertir de {from_} a {to_}."
+        return remove_accents(f"{amount} {from_} equivalen a {round(amount * rate,2)} {to_}.")
+    return remove_accents(f"No pude convertir de {from_} a {to_}.")
 
 # --- Endpoint principal ---
 # --- Endpoint principal ---
@@ -212,4 +217,5 @@ def chat():
         return jsonify({"reply": reply_sl})
     except Exception as e:
         return jsonify({"error": str(e), "raw": getattr(r, "text", "")})
+
 
