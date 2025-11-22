@@ -38,52 +38,72 @@ def get_language(user_id):
         return sessions[user_id]["lang"]
     return "es"
 
-# --- FUNCION DE HORA FIABLE ---
+# ================================
+#   NUEVA FUNCIÓN DE HORA
+# ================================
 def get_time(place):
     """
-    Obtiene la hora exacta usando timeapi.io
-    No inventa zonas: busca coincidencias reales.
+    Hora exacta usando worldtimeapi.org
+    Gratis, estable y sin inventar minutos.
     """
-    # Lista completa de zonas horarias
-    zones_url = "https://timeapi.io/api/TimeZone/AvailableTimeZones"
-    try:
-        all_zones = requests.get(zones_url, timeout=5).json()
-    except:
+
+    p = place.lower().strip()
+
+    zonas_fijas = {
+        "buenos aires": "America/Argentina/Buenos_Aires",
+        "caba": "America/Argentina/Buenos_Aires",
+        "argentina": "America/Argentina/Buenos_Aires",
+        "rosario": "America/Argentina/Buenos_Aires",
+        "cordoba": "America/Argentina/Cordoba",
+        "salta": "America/Argentina/Salta",
+
+        "uruguay": "America/Montevideo",
+        "montevideo": "America/Montevideo",
+
+        "chile": "America/Santiago",
+        "santiago": "America/Santiago",
+
+        "mexico": "America/Mexico_City",
+        "ciudad de mexico": "America/Mexico_City",
+
+        "miami": "America/New_York",
+        "new york": "America/New_York",
+
+        "madrid": "Europe/Madrid",
+        "españa": "Europe/Madrid",
+        "barcelona": "Europe/Madrid",
+
+        "tokio": "Asia/Tokyo",
+        "tokyo": "Asia/Tokyo",
+
+        "paris": "Europe/Paris",
+        "londres": "Europe/London",
+        "london": "Europe/London"
+    }
+
+    if p not in zonas_fijas:
         return None, None, None, None
 
-    # Normalizamos el nombre para buscarlo
-    place_normalized = place.lower().replace(" ", "_")
+    zona = zonas_fijas[p]
 
-    # Buscar coincidencias reales en la lista oficial
-    candidates = [z for z in all_zones if place_normalized in z.lower()]
-
-    if not candidates:
-        return None, None, None, None
-
-    # Usar la primera coincidencia exacta
-    zona_real = candidates[0]
-
-    # Obtener hora exacta
     try:
-        url = f"https://timeapi.io/api/Time/current/zone?timeZone={zona_real}"
+        url = f"https://worldtimeapi.org/api/timezone/{zona}"
         data = requests.get(url, timeout=5).json()
 
-        hora = data.get("time")                # HH:MM exacto
-        tz_name = data.get("timeZone")         # Nombre zona
-        datetime_full = data.get("dateTime")   # ISO completo
+        # Ejemplo: "2025-11-22T06:14:55.123456-03:00"
+        dt = data.get("datetime", "")
+        utc_offset = data.get("utc_offset", "")
 
-        # Extraer offset real
-        # Cuando no viene explícito, lo calculamos:
-        from datetime import datetime
-        dt = datetime.fromisoformat(datetime_full)
-        utc_offset = dt.strftime("%z")  # Ej: -0300 → lo convertimos a -03:00
-        utc_offset = utc_offset[:3] + ":" + utc_offset[3:]
+        # Hora EXACTA HH:MM sin inventar nada
+        hora = dt[11:16]
 
-        return hora, tz_name, utc_offset, ""
+        return hora, zona, utc_offset, ""
     except:
         return None, None, None, None
 
-# --- RESTO DE FUNCIONES ---
+# ================================
+#     RESTO DE FUNCIONES
+# ================================
 def get_weather(city):
     url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&units=metric&lang=es&appid={OPENWEATHER_API_KEY}"
     data = requests.get(url).json()
@@ -127,7 +147,9 @@ def convert_currency(amount, from_, to_):
         return remove_accents(f"{amount} {from_} equivalen a {round(amount * rate,2)} {to_}.")
     return remove_accents(f"No pude convertir de {from_} a {to_}.")
 
-# --- ENDPOINT PRINCIPAL ---
+# ================================
+#       ENDPOINT PRINCIPAL
+# ================================
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json()
@@ -147,33 +169,42 @@ def chat():
     
     lang = get_language(user_id)
 
-    # --- RESPUESTA DE HORA CON NARRATIVA ---
+    # ------------------------------
+    # RESPUESTA DE HORA
+    # ------------------------------
     if user_msg_lower.startswith("hora "):
         place = user_msg[5:].strip()
-        hora, tz_name, utc_offset, dst_text = get_time(place)
+        hora, tz_name, utc_offset, _ = get_time(place)
         if hora:
             reply_text = (
-                f"Zenko Kitsune: Mi amigo, he consultado los espíritus del tiempo para ti. "
-                f"En {place}, ahora son exactamente las {hora} {tz_name}{dst_text}, con un offset de UTC{utc_offset}. "
-                f"Espero que esto te ayude en tus aventuras."
+                f"Zenko Kitsune: Mi amigo, he consultado los espiritus del tiempo. "
+                f"En {place}, ahora son exactamente las {hora} (zona {tz_name}, UTC{utc_offset})."
             )
         else:
-            reply_text = f"Zenko Kitsune: Lo siento, no pude determinar la hora exacta de {place}."
+            reply_text = f"Zenko Kitsune: No pude determinar la hora exacta de {place}."
         return jsonify({"reply": remove_accents(reply_text)})
 
-    # Preguntas especiales restantes
+    # Clima
     elif user_msg_lower.startswith("clima "):
         city = user_msg[6:]
         return jsonify({"reply": get_weather(city)})
+
+    # Noticias
     elif user_msg_lower.startswith("noticias"):
         topic = user_msg[9:].strip() or "general"
         return jsonify({"reply": get_news(topic)})
+
+    # País
     elif user_msg_lower.startswith("pais "):
         country = user_msg[5:]
         return jsonify({"reply": get_country_info(country)})
+
+    # Wiki
     elif user_msg_lower.startswith("wiki "):
         term = user_msg[5:]
         return jsonify({"reply": wiki_summary(term, lang)})
+
+    # Moneda
     elif user_msg_lower.startswith("moneda "):
         parts = user_msg.split(" ")
         if len(parts) == 4:
@@ -186,7 +217,9 @@ def chat():
         else:
             return jsonify({"reply": "Formato: moneda <cantidad> <de> <a>"})
 
-    # --- PROMPT ORIGINAL DE ZENKO ---
+    # ===========================================
+    #     PROMPT ORIGINAL COMPLETO DE ZENKO
+    # ===========================================
     if lang == "en":
         system_prompt = (
             "You are Zenko, a friendly and intelligent kitsune spirit who resides in the Aokigahara forest. "
@@ -268,4 +301,6 @@ def chat():
         return jsonify({"reply": reply_sl})
     except Exception as e:
         return jsonify({"error": str(e), "raw": getattr(r, "text", "")})
+
+
 
