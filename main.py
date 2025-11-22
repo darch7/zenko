@@ -60,20 +60,11 @@ def get_time(place):
             r = requests.get(url, timeout=5)
             if r.status_code == 200:
                 data = r.json()
-                datetime_utc_str = data.get("datetime")[:19]  # '2025-11-22T05:48:12'
-                utc_offset = data.get("utc_offset", "+00:00")  # '-03:00'
+                datetime_str = data.get("datetime")  # ej: '2025-11-22T05:48:12.345678-03:00'
 
-                # Convertimos a datetime UTC
-                dt_utc = datetime.strptime(datetime_utc_str, "%Y-%m-%dT%H:%M:%S")
+                # La hora local correcta ya está en los primeros 16 caracteres 'HH:MM' desde posición 11
+                hora_local = datetime_str[11:16]
 
-                # Aplicamos offset manualmente
-                sign = 1 if utc_offset[0] == '+' else -1
-                hours_offset = int(utc_offset[1:3])
-                minutes_offset = int(utc_offset[4:6])
-                delta = timedelta(hours=sign*hours_offset, minutes=sign*minutes_offset)
-                dt_local = dt_utc + delta
-
-                hora_local = dt_local.strftime("%H:%M")
                 return remove_accents(f"La hora en {place} es {hora_local}.")
         except:
             continue
@@ -270,6 +261,7 @@ def chat():
 
     except Exception as e:
         return jsonify({"error": str(e), "raw": getattr(r, "text", "")})
+
 
 
 
