@@ -2,8 +2,8 @@ langdetect
 requests
 flask
 gunicorn
-pytz
 geopy
 timezonefinder
+
 
 
