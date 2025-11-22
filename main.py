@@ -40,32 +40,48 @@ def get_language(user_id):
 
 # --- FUNCION DE HORA FIABLE ---
 def get_time(place):
-    place_norm = place.replace(" ", "_").title()
-    zonas = [
-        f"Europe/{place_norm}",
-        f"America/{place_norm}",
-        f"Asia/{place_norm}",
-        f"Africa/{place_norm}",
-        f"Australia/{place_norm}",
-        f"Pacific/{place_norm}"
-    ]
+    """
+    Obtiene la hora exacta usando timeapi.io
+    No inventa zonas: busca coincidencias reales.
+    """
+    # Lista completa de zonas horarias
+    zones_url = "https://timeapi.io/api/TimeZone/AvailableTimeZones"
+    try:
+        all_zones = requests.get(zones_url, timeout=5).json()
+    except:
+        return None, None, None, None
 
-    for zona in zonas:
-        try:
-            url = f"https://worldtimeapi.org/api/timezone/{zona}"
-            r = requests.get(url, timeout=5)
-            if r.status_code == 200:
-                data = r.json()
-                datetime_str = data.get("datetime")  # Ej: '2025-11-22T05:48:12.345678-03:00'
-                hora_local = datetime_str[11:16]     # HH:MM
-                tz_name = data.get("abbreviation", "TZ")  # Ej: ART
-                utc_offset = data.get("utc_offset", "")    # Ej: -03:00
-                dst = data.get("dst", False)
-                dst_text = " (horario de verano)" if dst else ""
-                return hora_local, tz_name, utc_offset, dst_text
-        except:
-            continue
-    return None, None, None, None
+    # Normalizamos el nombre para buscarlo
+    place_normalized = place.lower().replace(" ", "_")
+
+    # Buscar coincidencias reales en la lista oficial
+    candidates = [z for z in all_zones if place_normalized in z.lower()]
+
+    if not candidates:
+        return None, None, None, None
+
+    # Usar la primera coincidencia exacta
+    zona_real = candidates[0]
+
+    # Obtener hora exacta
+    try:
+        url = f"https://timeapi.io/api/Time/current/zone?timeZone={zona_real}"
+        data = requests.get(url, timeout=5).json()
+
+        hora = data.get("time")                # HH:MM exacto
+        tz_name = data.get("timeZone")         # Nombre zona
+        datetime_full = data.get("dateTime")   # ISO completo
+
+        # Extraer offset real
+        # Cuando no viene explícito, lo calculamos:
+        from datetime import datetime
+        dt = datetime.fromisoformat(datetime_full)
+        utc_offset = dt.strftime("%z")  # Ej: -0300 → lo convertimos a -03:00
+        utc_offset = utc_offset[:3] + ":" + utc_offset[3:]
+
+        return hora, tz_name, utc_offset, ""
+    except:
+        return None, None, None, None
 
 # --- RESTO DE FUNCIONES ---
 def get_weather(city):
@@ -252,3 +268,4 @@ def chat():
         return jsonify({"reply": reply_sl})
     except Exception as e:
         return jsonify({"error": str(e), "raw": getattr(r, "text", "")})
+
