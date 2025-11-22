@@ -45,24 +45,44 @@ def get_language(user_id):
 # --- APIs externas ---
 
 def get_time(place):
-    try:
-        geolocator = Nominatim(user_agent="zenko_hud")
-        location = geolocator.geocode(place)
-        if not location:
-            return remove_accents(f"No pude encontrar la hora de {place}.")
+    # Transformamos el nombre de la ciudad a formato de WorldTimeAPI
+    place_norm = place.replace(" ", "_").title()
+    zonas = [
+        f"Europe/{place_norm}",
+        f"America/{place_norm}",
+        f"Asia/{place_norm}",
+        f"Africa/{place_norm}",
+        f"Australia/{place_norm}",
+        f"Pacific/{place_norm}"
+    ]
 
-        tf = TimezoneFinder()
-        tz_name = tf.timezone_at(lng=location.longitude, lat=location.latitude)
-        if not tz_name:
-            return remove_accents(f"No pude determinar la zona horaria de {place}.")
+    for zona in zonas:
+        try:
+            url = f"https://worldtimeapi.org/api/timezone/{zona}"
+            r = requests.get(url)
+            if r.status_code == 200:
+                data = r.json()
+                datetime_str = data.get("datetime", "")
+                utc_offset = data.get("utc_offset", "+00:00")  # ej: "-03:00"
 
-        tz = pytz.timezone(tz_name)
-        dt = datetime.now(tz)
-        hora_formateada = dt.strftime("%I:%M %p")
-        return remove_accents(f"La hora en {place} es {hora_formateada} ({tz.tzname(dt)}).")
+                # Parseamos hora
+                hora_utc = datetime_str[11:16]
+                # Ajustamos según el offset
+                offset_sign = 1 if utc_offset[0] == "+" else -1
+                offset_hours = int(utc_offset[1:3])
+                offset_minutes = int(utc_offset[4:6])
+                dt_obj = datetime.strptime(hora_utc, "%H:%M")
+                dt_obj = dt_obj.replace(
+                    hour=(dt_obj.hour + offset_sign * offset_hours) % 24,
+                    minute=(dt_obj.minute + offset_sign * offset_minutes) % 60
+                )
 
-    except Exception as e:
-        return remove_accents(f"No pude obtener la hora de {place}. Error: {e}")
+                hora_formateada = dt_obj.strftime("%I:%M %p")
+                return remove_accents(f"La hora en {place} es {hora_formateada} ({zona}).")
+        except:
+            continue
+
+    return remove_accents(f"No pude obtener la hora de {place}.")
 
 def get_weather(city):
     url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&units=metric&lang=es&appid={OPENWEATHER_API_KEY}"
@@ -254,3 +274,4 @@ def chat():
 
     except Exception as e:
         return jsonify({"error": str(e), "raw": getattr(r, "text", "")})
+
