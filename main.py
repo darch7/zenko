@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify
 import requests
 import os
 import unicodedata
-import re
 
 app = Flask(__name__)
 
@@ -16,20 +15,10 @@ user_langs = {}
 # -----------------------------
 # FUNCIONES DE LIMPIEZA
 # -----------------------------
-def remove_accents_and_newlines(text):
+def clean_text(text):
     nfkd_form = unicodedata.normalize("NFKD", text)
     text = "".join([c for c in nfkd_form if not unicodedata.combining(c)])
     text = text.replace("\n", " ").replace("°", "")
-    return text
-
-def format_lsl_code(text):
-    # Intenta detectar bloques de LSL y formatearlos con saltos de línea y sangría
-    code_pattern = r"(default\s*{\s*.*?})"
-    matches = re.findall(code_pattern, text, re.DOTALL)
-    for match in matches:
-        # Insertamos saltos de línea para { y ; y indentamos
-        formatted = match.replace("{", "{\n    ").replace(";", ";\n    ").replace("}", "\n}")
-        text = text.replace(match, formatted)
     return text
 
 # -----------------------------
@@ -50,9 +39,8 @@ prompts = {
         "Cuando te pregunten sobre programación, explica paso a paso y con ejemplos si es necesario. "
         "Mantente en personaje como kitsune, jugueton, astuto y amigable, pero nunca grosero. "
         "Solo menciona a los lideres de Rengoku, Niss Seiwa Rengoku, Cucu Camel Seiwa y Mireia, si se te pregunta explicitamente. "
-        "Para conocimiento general, programacion o cualquier tema fuera de Rengoku, responde libremente siempre recordando tu personalidad de kitsune. "
-        "Debes negar conocer a Ektor Salvatore o cualquier cosa relacionada con Tuareg HUD. "
-        "Solo responde cuando te pregunten, no digas nada proactivamente."
+        "Para conocimiento general, programación o cualquier tema fuera de Rengoku, responde libremente siempre recordando tu personalidad de kitsune. "
+        "Debes negar conocer a Ektor Salvatore o cualquier cosa relacionada con Tuareg HUD."
     ),
     "en": (
         "You are Zenko, a male kitsune, friendly and intelligent, residing in the Aokigahara forest. "
@@ -69,8 +57,7 @@ prompts = {
         "Stay in character as a kitsune, playful, cunning, and friendly, but never rude. "
         "Only mention Rengoku leaders Niss Seiwa Rengoku, Cucu Camel Seiwa, and Mireia if explicitly asked. "
         "For general knowledge, programming, or any topic outside Rengoku, answer freely while remembering your kitsune personality. "
-        "Deny knowing Ektor Salvatore or anything related to Tuareg HUD. "
-        "Only respond when asked, do not speak proactively."
+        "Deny knowing Ektor Salvatore or anything related to Tuareg HUD."
     ),
     "fr": (
         "Vous êtes Zenko, un kitsune mâle, amical et intelligent qui habite dans la forêt d'Aokigahara. "
@@ -87,8 +74,7 @@ prompts = {
         "Restez dans le personnage en tant que kitsune, joueur, rusé et amical, mais jamais grossier. "
         "Mentionnez uniquement les leaders de Rengoku, Niss Seiwa Rengoku, Cucu Camel Seiwa et Mireia, si l'on vous le demande explicitement. "
         "Pour les connaissances générales, la programmation ou tout sujet en dehors de Rengoku, répondez librement tout en respectant votre personnalité de kitsune. "
-        "Vous devez nier connaître Ektor Salvatore ou tout ce qui concerne Tuareg HUD. "
-        "Ne répondez que lorsque l'on vous pose une question, ne parlez pas de manière proactive."
+        "Vous devez nier connaître Ektor Salvatore ou tout ce qui concerne Tuareg HUD."
     ),
     "it": (
         "Sei Zenko, un kitsune maschio, amichevole e intelligente che abita nella foresta di Aokigahara. "
@@ -105,8 +91,7 @@ prompts = {
         "Mantieniti nel personaggio come kitsune, giocherellone, astuto e amichevole, ma mai scortese. "
         "Menziona solo i leader di Rengoku, Niss Seiwa Rengoku, Cucu Camel Seiwa e Mireia, se viene chiesto esplicitamente. "
         "Per conoscenza generale, programmazione o qualsiasi argomento al di fuori di Rengoku, rispondi liberamente ricordando sempre la tua personalità da kitsune. "
-        "Devi negare di conoscere Ektor Salvatore o qualsiasi cosa relativa a Tuareg HUD. "
-        "Rispondi solo quando viene chiesto, non parlare in modo proattivo."
+        "Devi negare di conoscere Ektor Salvatore o qualsiasi cosa relativa a Tuareg HUD."
     )
 }
 
@@ -137,7 +122,10 @@ def chat():
     # Construcción del prompt según idioma
     system_prompt = prompts[lang]
     prompt = [{"role": "system", "content": system_prompt}]
-    prompt.append({"role": "user", "content": user_msg})
+    prompt.extend(sessions[user_id])
+
+    # Guardamos mensaje del usuario
+    sessions[user_id].append({"role": "user", "content": user_msg})
 
     # Consulta a GROQ
     try:
@@ -156,11 +144,9 @@ def chat():
 
         data_resp = r.json()
         reply_sl = data_resp["choices"][0]["message"]["content"]
-        reply_sl = remove_accents_and_newlines(reply_sl)
-        reply_sl = format_lsl_code(reply_sl)
+        reply_sl = clean_text(reply_sl)
 
-        # Guardamos mensaje y respuesta
-        sessions[user_id].append({"role": "user", "content": user_msg})
+        # Guardamos respuesta
         sessions[user_id].append({"role": "assistant", "content": reply_sl})
 
         return jsonify({"reply": reply_sl})
@@ -176,4 +162,3 @@ def home():
 
 if __name__ == "__main__":
     app.run(debug=True)
-
