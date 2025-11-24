@@ -9,6 +9,7 @@ app = Flask(__name__)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 MODEL = "llama-3.1-8b-instant"
 
+# Guardamos sesiones por usuario
 sessions = {}
 
 # -----------------------------
@@ -19,7 +20,9 @@ def remove_accents(text):
     return "".join([c for c in nfkd_form if not unicodedata.combining(c)])
 
 def sanitize_output(text):
-    return text.replace("°", "")
+    # elimina caracteres no compatibles con SL
+    text = text.replace("°", "")
+    return text
 
 # -----------------------------
 # FUNCIONES RSS
@@ -49,7 +52,7 @@ def rss_seraphim():
     return fetch_rss("https://www.seraphimsl.com/feed/")
 
 # -----------------------------
-# BUSCADOR FIRECRAWL
+# BUSCADOR FIRECRAWL (GRATIS)
 # -----------------------------
 def search_firecrawl(query):
     try:
@@ -80,31 +83,7 @@ def chat():
     user_msg_lower = user_msg.lower().strip()
 
     # ---------------------------------------
-    # COMANDOS DIRECTOS
-    # ---------------------------------------
-    if user_msg_lower.startswith("/zenko news"):
-        reply = rss_infobae()
-        return jsonify({"reply": sanitize_output(reply)})
-
-    if user_msg_lower.startswith("/event"):
-        reply = rss_seraphim()
-        return jsonify({"reply": sanitize_output(reply)})
-
-    if user_msg_lower.startswith("/search "):
-        query = user_msg[8:].strip()
-        reply = search_firecrawl(query)
-        return jsonify({"reply": sanitize_output(reply)})
-
-    # ---------------------------------------
-    # SESIONES POR USUARIO
-    # ---------------------------------------
-    if user_id not in sessions:
-        sessions[user_id] = []
-
-    sessions[user_id].append({"role": "user", "content": user_msg})
-
-    # ---------------------------------------
-    # DETECTAR IDIOMA
+    # DETECCIÓN DE IDIOMA AUTOMÁTICA
     # ---------------------------------------
     lang = "es"
     msg = user_msg.lower()
@@ -112,6 +91,49 @@ def chat():
         lang = "en"
     elif any(w in msg for w in ["bonjour", "salut"]):
         lang = "fr"
+
+    # Diccionario de comandos según idioma (sin /)
+    commands = {
+        "news": {
+            "es": "zenko noticias",
+            "en": "zenko news",
+            "fr": "zenko actualités"
+        },
+        "event": {
+            "es": "evento",
+            "en": "event",
+            "fr": "événement"
+        },
+        "search": {
+            "es": "buscar ",
+            "en": "search ",
+            "fr": "rechercher "
+        }
+    }
+
+    # ---------------------------------------
+    # COMANDOS PERSONALIZADOS
+    # ---------------------------------------
+    if user_msg_lower.startswith(commands["news"][lang]):
+        reply = rss_infobae()
+        return jsonify({"reply": sanitize_output(reply)})
+
+    if user_msg_lower.startswith(commands["event"][lang]):
+        reply = rss_seraphim()
+        return jsonify({"reply": sanitize_output(reply)})
+
+    if user_msg_lower.startswith(commands["search"][lang]):
+        query = user_msg[len(commands["search"][lang]):].strip()
+        reply = search_firecrawl(query)
+        return jsonify({"reply": sanitize_output(reply)})
+
+    # ---------------------------------------
+    # SISTEMA DE SESIONES
+    # ---------------------------------------
+    if user_id not in sessions:
+        sessions[user_id] = []
+
+    sessions[user_id].append({"role": "user", "content": user_msg})
 
     # ---------------------------------------
     # PROMPT ORIGINAL COMPLETO DE ZENKO
@@ -179,9 +201,7 @@ def chat():
     prompt = [{"role": "system", "content": system_prompt}]
     prompt.extend(sessions[user_id])
 
-    # ---------------------------------------
     # CONSULTA A GROQ
-    # ---------------------------------------
     try:
         r = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
@@ -195,6 +215,7 @@ def chat():
                 "temperature": 0.5,
             }
         )
+
         data = r.json()
         reply_sl = data["choices"][0]["message"]["content"]
         reply_sl = sanitize_output(reply_sl)
