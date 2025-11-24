@@ -9,7 +9,6 @@ app = Flask(__name__)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 MODEL = "llama-3.1-8b-instant"
 
-# Guardamos sesiones por usuario
 sessions = {}
 
 # -----------------------------
@@ -20,9 +19,7 @@ def remove_accents(text):
     return "".join([c for c in nfkd_form if not unicodedata.combining(c)])
 
 def sanitize_output(text):
-    # elimina caracteres no compatibles con SL
-    text = text.replace("°", "")
-    return text
+    return text.replace("°", "")
 
 # -----------------------------
 # FUNCIONES RSS
@@ -32,20 +29,16 @@ def fetch_rss(url):
         r = requests.get(url, timeout=10)
         if r.status_code != 200:
             return "No pude acceder al RSS."
-
         soup = BeautifulSoup(r.text, "xml")
         items = soup.find_all("item")
         if not items:
-            return "No encontre resultados en el RSS."
-
+            return "No encontré resultados en el RSS."
         salida = []
         for item in items[:5]:
             title = item.title.get_text(strip=True)
             link = item.link.get_text(strip=True)
             salida.append(f"- {title}: {link}")
-
         return "\n".join(salida)
-
     except Exception as e:
         return f"Error leyendo RSS: {str(e)}"
 
@@ -56,28 +49,23 @@ def rss_seraphim():
     return fetch_rss("https://www.seraphimsl.com/feed/")
 
 # -----------------------------
-# BUSCADOR FIRECRAWL (GRATIS)
+# BUSCADOR FIRECRAWL
 # -----------------------------
 def search_firecrawl(query):
     try:
         url = "https://api.firecrawl.dev/v1/search"
         data = {"query": query}
         headers = {"Content-Type": "application/json"}
-
         r = requests.post(url, json=data, headers=headers)
         js = r.json()
-
         if "results" not in js:
-            return "No encontre resultados en Firecrawl."
-
+            return "No encontré resultados en Firecrawl."
         salida = []
         for item in js["results"][:5]:
-            title = item.get("title", "Sin titulo")
+            title = item.get("title", "Sin título")
             link = item.get("url", "")
             salida.append(f"- {title}: {link}")
-
         return "\n".join(salida)
-
     except Exception as e:
         return f"Error en Firecrawl: {str(e)}"
 
@@ -92,27 +80,23 @@ def chat():
     user_msg_lower = user_msg.lower().strip()
 
     # ---------------------------------------
-    # COMANDOS PERSONALIZADOS DE ZENKO
+    # COMANDOS DIRECTOS
     # ---------------------------------------
-
-    # /zenko news → noticias Infobae
     if user_msg_lower.startswith("/zenko news"):
         reply = rss_infobae()
         return jsonify({"reply": sanitize_output(reply)})
 
-    # /event → eventos SeraphimSL
     if user_msg_lower.startswith("/event"):
         reply = rss_seraphim()
         return jsonify({"reply": sanitize_output(reply)})
 
-    # /search → buscador Firecrawl
     if user_msg_lower.startswith("/search "):
-        query = user_msg[8:]
+        query = user_msg[8:].strip()
         reply = search_firecrawl(query)
         return jsonify({"reply": sanitize_output(reply)})
 
     # ---------------------------------------
-    # SISTEMA DE SESIONES
+    # SESIONES POR USUARIO
     # ---------------------------------------
     if user_id not in sessions:
         sessions[user_id] = []
@@ -120,7 +104,7 @@ def chat():
     sessions[user_id].append({"role": "user", "content": user_msg})
 
     # ---------------------------------------
-    # IDIOMA AUTOMATICO
+    # DETECTAR IDIOMA
     # ---------------------------------------
     lang = "es"
     msg = user_msg.lower()
@@ -131,7 +115,6 @@ def chat():
 
     # ---------------------------------------
     # PROMPT ORIGINAL COMPLETO DE ZENKO
-    # (SIN NINGÚN CAMBIO)
     # ---------------------------------------
     if lang == "en":
         system_prompt = (
@@ -212,7 +195,6 @@ def chat():
                 "temperature": 0.5,
             }
         )
-
         data = r.json()
         reply_sl = data["choices"][0]["message"]["content"]
         reply_sl = sanitize_output(reply_sl)
@@ -224,12 +206,9 @@ def chat():
     except Exception as e:
         return jsonify({"reply": f"Error interno: {str(e)}"})
 
-
 @app.route("/", methods=["GET"])
 def home():
     return "Zenko API Running"
 
-
 if __name__ == "__main__":
     app.run(debug=True)
-
