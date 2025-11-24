@@ -20,7 +20,6 @@ def remove_accents(text):
     return "".join([c for c in nfkd_form if not unicodedata.combining(c)])
 
 def sanitize_output(text):
-    # elimina caracteres no compatibles con SL
     text = text.replace("°", "")
     return text
 
@@ -29,19 +28,22 @@ def sanitize_output(text):
 # -----------------------------
 def fetch_rss(url):
     try:
-        r = requests.get(url, timeout=10)
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ZenkoRSS/1.0"
+        }
+        r = requests.get(url, headers=headers, timeout=10)
         if r.status_code != 200:
             return "No pude acceder al RSS."
 
         soup = BeautifulSoup(r.text, "xml")
         items = soup.find_all("item")
         if not items:
-            return "No encontre resultados en el RSS."
+            return "No encontré resultados en el RSS."
 
         salida = []
         for item in items[:5]:
-            title = item.title.get_text(strip=True)
-            link = item.link.get_text(strip=True)
+            title = item.title.text if item.title else "Sin título"
+            link = item.link.text if item.link else ""
             salida.append(f"- {title}: {link}")
 
         return "\n".join(salida)
@@ -68,11 +70,11 @@ def search_firecrawl(query):
         js = r.json()
 
         if "results" not in js:
-            return "No encontre resultados en Firecrawl."
+            return "No encontré resultados en Firecrawl."
 
         salida = []
         for item in js["results"][:5]:
-            title = item.get("title", "Sin titulo")
+            title = item.get("title", "Sin título")
             link = item.get("url", "")
             salida.append(f"- {title}: {link}")
 
@@ -89,49 +91,44 @@ def chat():
     data = request.get_json()
     user_id = data.get("user_id", "anon")
     user_msg = data.get("message", "")
-    msg_lower = user_msg.lower().strip()
+    user_msg_lower = user_msg.lower().strip()
 
     # ---------------------------------------
-    # DETECCIÓN DE IDIOMA AUTOMÁTICA
+    # COMANDOS SEGUN IDIOMA
     # ---------------------------------------
     lang = "es"
-    if any(w in msg_lower for w in ["hello", "hi", "weather", "news"]):
+    if any(w in user_msg_lower for w in ["hello", "hi", "weather", "news"]):
         lang = "en"
-    elif any(w in msg_lower for w in ["bonjour", "salut"]):
+    elif any(w in user_msg_lower for w in ["bonjour", "salut"]):
         lang = "fr"
 
-    # Diccionario de comandos según idioma (sin /)
-    commands = {
-        "news": {
-            "es": "zenko noticias",
-            "en": "zenko news",
-            "fr": "zenko actualités"
-        },
-        "event": {
-            "es": "evento",
-            "en": "event",
-            "fr": "événement"
-        },
-        "search": {
-            "es": "buscar ",
-            "en": "search ",
-            "fr": "rechercher "
-        }
-    }
+    # Palabras clave según idioma
+    if lang == "es":
+        cmd_news = "zenko noticias"
+        cmd_event = "evento"
+        cmd_search = "buscar "
+    elif lang == "en":
+        cmd_news = "zenko news"
+        cmd_event = "event"
+        cmd_search = "search "
+    else:
+        cmd_news = "zenko nouvelles"
+        cmd_event = "evenement"
+        cmd_search = "recherche "
 
     # ---------------------------------------
-    # COMANDOS PERSONALIZADOS SEGÚN IDIOMA
+    # COMANDOS PERSONALIZADOS
     # ---------------------------------------
-    if msg_lower.startswith(commands["news"][lang]):
+    if user_msg_lower.startswith(cmd_news):
         reply = rss_infobae()
         return jsonify({"reply": sanitize_output(reply)})
 
-    if msg_lower.startswith(commands["event"][lang]):
+    if user_msg_lower.startswith(cmd_event):
         reply = rss_seraphim()
         return jsonify({"reply": sanitize_output(reply)})
 
-    if msg_lower.startswith(commands["search"][lang]):
-        query = user_msg[len(commands["search"][lang]):].strip()
+    if user_msg_lower.startswith(cmd_search):
+        query = user_msg[len(cmd_search):].strip()
         reply = search_firecrawl(query)
         return jsonify({"reply": sanitize_output(reply)})
 
@@ -237,11 +234,11 @@ def chat():
     except Exception as e:
         return jsonify({"reply": f"Error interno: {str(e)}"})
 
+
 @app.route("/", methods=["GET"])
 def home():
     return "Zenko API Running"
 
+
 if __name__ == "__main__":
     app.run(debug=True)
-
-
