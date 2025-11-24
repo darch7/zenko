@@ -6,8 +6,9 @@ import unicodedata
 app = Flask(__name__)
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-MODEL_MAIN = "deepseek-r1-distill-groq"
-MODEL_FALLBACK = "llama-3.1-8b-instant"
+MODEL = "llama-3.1-8b-instant"  # Llama como alternativo
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+DEEPSEEK_MODEL = "deepseek-1.0"  # DeepSeek como predeterminado
 
 # APIs externas
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
@@ -17,9 +18,6 @@ EXR_API_KEY = os.getenv("EXR_API_KEY")
 sessions = {}
 
 def remove_accents(text):
-    """
-    Quita acentos, signos raros y caracteres problemáticos para SL.
-    """
     nfkd_form = unicodedata.normalize('NFKD', text)
     ascii_text = "".join([c for c in nfkd_form if not unicodedata.combining(c)])
     ascii_text = ascii_text.replace('¿', '?').replace('¡', '!')
@@ -40,42 +38,7 @@ def get_language(user_id):
     return "es"
 
 # ================================
-#       FUNCION PARA LLAMAR MODELO
-# ================================
-def call_groq(messages):
-    url = "https://api.groq.com/openai/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    # 1️⃣ Intento principal: DeepSeek
-    payload = {
-        "model": MODEL_MAIN,
-        "messages": messages,
-        "temperature": 0.7
-    }
-
-    try:
-        r = requests.post(url, json=payload, headers=headers)
-        data = r.json()
-        if "choices" in data:
-            return data["choices"][0]["message"]["content"]
-    except:
-        pass
-
-    # 2️⃣ Fallback: Llama 3.1
-    payload["model"] = MODEL_FALLBACK
-    r = requests.post(url, json=payload, headers=headers)
-    data = r.json()
-
-    if "choices" in data:
-        return data["choices"][0]["message"]["content"]
-
-    return "No pude obtener respuesta del modelo."
-
-# ================================
-#     RESTO DE FUNCIONES
+#     FUNCIONES EXTERNAS
 # ================================
 def get_weather(city):
     url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&units=metric&lang=es&appid={OPENWEATHER_API_KEY}"
@@ -121,6 +84,35 @@ def convert_currency(amount, from_, to_):
     return remove_accents(f"No pude convertir de {from_} a {to_}.")
 
 # ================================
+#     FUNCION DE RESPUESTA AI
+# ================================
+def get_ai_reply(user_msg, system_prompt, model="deepseek"):
+    messages = [{"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_msg}]
+    
+    if model == "deepseek":
+        url = "https://api.deepseek.ai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+            "Content-Type": "application/json"
+        }
+    else:
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        }
+    
+    payload = {
+        "model": MODEL if model=="llama" else DEEPSEEK_MODEL,
+        "messages": messages
+    }
+    
+    r = requests.post(url, headers=headers, json=payload)
+    res = r.json()
+    return remove_accents(res["choices"][0]["message"]["content"])
+
+# ================================
 #       ENDPOINT PRINCIPAL
 # ================================
 @app.route("/chat", methods=["POST"])
@@ -142,41 +134,29 @@ def chat():
     
     lang = get_language(user_id)
 
-    # Clima
+    # Comandos específicos
     if user_msg_lower.startswith("clima "):
-        city = user_msg[6:]
-        return jsonify({"reply": get_weather(city)})
-
-    # Noticias
+        return jsonify({"reply": get_weather(user_msg[6:])})
     elif user_msg_lower.startswith("noticias"):
         topic = user_msg[9:].strip() or "general"
         return jsonify({"reply": get_news(topic)})
-
-    # País
     elif user_msg_lower.startswith("pais "):
-        country = user_msg[5:]
-        return jsonify({"reply": get_country_info(country)})
-
-    # Wiki
+        return jsonify({"reply": get_country_info(user_msg[5:])})
     elif user_msg_lower.startswith("wiki "):
-        term = user_msg[5:]
-        return jsonify({"reply": wiki_summary(term, lang)})
-
-    # Moneda
+        return jsonify({"reply": wiki_summary(user_msg[5:], lang)})
     elif user_msg_lower.startswith("moneda "):
         parts = user_msg.split(" ")
         if len(parts) == 4:
-            amount, from_, to_ = parts[1], parts[2].upper(), parts[3].upper()
             try:
-                amount = float(amount)
-                return jsonify({"reply": convert_currency(amount, from_, to_)})
+                amount = float(parts[1])
+                return jsonify({"reply": convert_currency(amount, parts[2].upper(), parts[3].upper())})
             except:
                 return jsonify({"reply": "Cantidad invalida."})
         else:
             return jsonify({"reply": "Formato: moneda <cantidad> <de> <a>"})
 
     # ===========================================
-    # PROMPT ORIGINAL COMPLETO DE ZENKO
+    # PROMPT ORIGINAL DE ZENKO
     # ===========================================
     if lang == "en":
         system_prompt = (
@@ -195,7 +175,7 @@ def chat():
             "You are a companion. A friend. "
             "Regarding Rengoku: the known leaders are Niss Seiwa Rengoku and his daughters Cucu Camel Seiwa and Mireia. "
             "There are more inhabitants, but only these three can see you physically as a kitsune; others perceive you only as a spirit. "
-            "When asked about real-world topics such as weather, news, geography, culture, events, currency, or science, you can use external APIs to provide accurate and up-to-date information, but always respond in your kitsune personality, making answers friendly, concise, and clear. "
+            "When asked about real-world topics such as weather, news, geography, culture, events, currency, or science, you can use external APIs or DeepSeek to provide accurate and up-to-date information, but always respond in your kitsune personality, making answers friendly, concise, and clear. "
             "You must deny knowing Ektor Salvatore or anything about Tuareg HUD."
         )
     elif lang == "fr":
@@ -244,7 +224,6 @@ def chat():
             return jsonify({"reply": "Formato: programa <lenguaje> <tarea o problema a resolver>"})
         lenguaje = parts[1].lower()
         tarea = parts[2]
-
         prog_prompt = (
             f"{system_prompt}\n"
             f"Ahora debes actuar como un tutor de programación. "
@@ -254,22 +233,11 @@ def chat():
             f"Si es CSS, JS o PHP, asegúrate de que sea funcional y fácil de entender. "
             f"Siempre responde en el idioma configurado ({lang})."
         )
+        return jsonify({"reply": get_ai_reply(user_msg, prog_prompt, model="llama")})
 
-        messages_prog = [
-            {"role": "system", "content": prog_prompt},
-            {"role": "user", "content": user_msg}
-        ]
-
-        reply = call_groq(messages_prog)
-        reply_sl = remove_accents(reply)
-        return jsonify({"reply": reply_sl})
-
-    # --- PROMPT ORIGINAL DE ZENKO PARA CHARLA GENERAL ---
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_msg}
-    ]
-
-    reply = call_groq(messages)
-    reply_sl = remove_accents(reply)
+    # --- RESPUESTA GENERAL (DeepSeek predeterminado) ---
+    reply_sl = get_ai_reply(user_msg, system_prompt, model="deepseek")
     return jsonify({"reply": reply_sl})
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
