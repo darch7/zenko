@@ -4,6 +4,8 @@ flask
 gunicorn
 geopy
 timezonefinder
+beautifulsoup4
+lxml
 
 
 
