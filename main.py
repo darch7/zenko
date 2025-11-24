@@ -141,7 +141,7 @@ def chat():
             return jsonify({"reply": "Formato: moneda <cantidad> <de> <a>"})
 
     # -----------------------------
-    # Prompt completo de Zenko
+    # Prompt completo de Zenko (exactamente como me diste)
     # -----------------------------
     if lang == "en":
         system_prompt = (
@@ -205,7 +205,7 @@ def chat():
         )
 
     # -----------------------------
-    # Prompt general Zenko usando DeepSeek
+    # Llamada a DeepSeek (manteniendo prompt intacto)
     # -----------------------------
     messages = [
         {"role": "system", "content": system_prompt},
@@ -223,7 +223,8 @@ def chat():
     }
 
     try:
-        r = requests.post("https://api.deepseek.com", headers=headers, json=payload)
+        r = requests.post("https://api.deepseek.com/v1/chat/completions", headers=headers, json=payload)
+        r.raise_for_status()
         res = r.json()
         reply = res["choices"][0]["message"]["content"]
         reply_sl = remove_accents(reply)
