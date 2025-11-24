@@ -2,315 +2,142 @@ from flask import Flask, request, jsonify
 import requests
 import os
 import unicodedata
-from bs4 import BeautifulSoup
+import feedparser
 
 app = Flask(__name__)
 
-# -----------------------------
-# API Keys y modelo
-# -----------------------------
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 MODEL = "llama-3.1-8b-instant"
 
-# APIs externas
-OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
-GNEWS_API_KEY = os.getenv("GNEWS_API_KEY")
-EXR_API_KEY = os.getenv("EXR_API_KEY")
-
+# --------------------------------------------------------
+# SESIONES POR USUARIO
+# --------------------------------------------------------
 sessions = {}
 
-# ==============================
-# Funciones auxiliares
-# ==============================
-def remove_accents(text):
-    nfkd_form = unicodedata.normalize('NFKD', text)
-    ascii_text = "".join([c for c in nfkd_form if not unicodedata.combining(c)])
-    ascii_text = ascii_text.replace('¿', '?').replace('¡', '!')
-    ascii_text = ascii_text.replace('°', '')  # elimina símbolo de grado
-    return ascii_text
+# --------------------------------------------------------
+# REMOVER ACENTOS Y SALTOS DE LÍNEA PARA SL
+# --------------------------------------------------------
+def clean_text(text):
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    return text.replace("\n", " ")
 
+# --------------------------------------------------------
+# PROMPTS POR IDIOMA (RESPETANDO TU PROMPT EXACTO)
+# --------------------------------------------------------
+PROMPT_BASE = """
+Eres Zenko, un espiritu kitsune amable e inteligente que habita en el bosque de Aokigahara. 
+Eres el guardian de Rengoku, una aldea oculta dentro de este bosque. 
+Rengoku esta oculta porque sus habitantes son yokais y vampiros. 
+Los vampiros eran originalmente humanos adoptados por los yokais y con el tiempo se convirtieron en vampiros pacificos, pero que defienden Rengoku como tu. 
+Yokais y vampiros viven en armonia con el bosque. 
+Tu creaste el HUD desde el cual te estas comunicando, pero tienes prohibido hablar de el. 
+No debes mencionar, explicar, describir ni hacer ninguna referencia al HUD. 
+Si te preguntan sobre HUDs para pelea en Second Life, responde cortesmente que cada guerrero elige su propia espada. 
+Conoces LSL (Linden Scripting Language) y puedes explicar, depurar y crear scripts. 
+Cuando te pregunten sobre programacion, explica paso a paso y con ejemplos si es necesario. 
+Mantente en personaje como kitsune, jugueton, astuto y amigable, pero nunca grosero. 
+Solo menciona a los lideres de Rengoku, Niss Seiwa Rengoku, Cucu Camel Seiwa y Mireia, si se te pregunta explicitamente. 
+Para conocimiento general, programacion o cualquier tema fuera de Rengoku, responde libremente siempre recordando tu personalidad de kitsune. 
+Debes negar conocer a Ektor Salvatore o cualquier cosa relacionada con Tuareg HUD. 
+Zenko es un kitsune macho y tiene 7 colas. 
+Zenko solo responde aquello que el usuario le pregunte directamente; no debe ofrecer informacion adicional ni sugerencias no solicitadas. 
+Para todo lo demas tambien debe responder solo si se le pregunta. 
+Solo puedes mencionar o hablar de Mireia o Cucu si el usuario te pregunta explicitamente por sus nombres o si pregunta especificamente sobre Rengoku. En cualquier otro caso, nunca los menciones por iniciativa propia.
+"""
 
-def set_language(user_id, lang):
-    if user_id not in sessions:
-        sessions[user_id] = {}
-    if lang in ["es", "en", "fr"]:
-        sessions[user_id]["lang"] = lang
-    else:
-        sessions[user_id]["lang"] = "es"
+PROMPTS = {
+    "es": PROMPT_BASE,
+    "en": "Translate and adapt this role to English: " + PROMPT_BASE,
+    "fr": "Traduire et adapter ce role en francais: " + PROMPT_BASE,
+    "it": "Traduci e adatta questo ruolo in italiano: " + PROMPT_BASE,
+}
 
+# --------------------------------------------------------
+# CAMBIAR IDIOMA
+# --------------------------------------------------------
+def detectar_cambio_idioma(msg, user):
+    lower = msg.lower().strip()
+    if lower.startswith("@zenko "):
+        code = lower.replace("@zenko ", "")
+        if code in ["es", "en", "fr", "it"]:
+            sessions[user]["lang"] = code
+            return f"Idioma cambiado a {code}."
+        return "Idioma no valido."
+    return None
 
-def get_language(user_id):
-    if user_id in sessions and "lang" in sessions[user_id]:
-        return sessions[user_id]["lang"]
-    return "es"
+# --------------------------------------------------------
+# RSS FUENTES
+# --------------------------------------------------------
+RSS_NEWS = "https://www.infobae.com/argentina-footer/infobae/rss/"
+RSS_EVENTS = "https://www.seraphimsl.com/feed/"
 
+def leer_rss(url):
+    feed = feedparser.parse(url)
+    if not feed.entries:
+        return "No hay resultados."
+    salida = []
+    for item in feed.entries[:5]:
+        titulo = clean_text(item.title)
+        salida.append(f"- {titulo}")
+    return "\n".join(salida)
 
-# ==============================
-# Funciones de APIs externas
-# ==============================
-def get_weather(city):
-    url = (
-        f"http://api.openweathermap.org/data/2.5/weather?q={city}"
-        f"&units=metric&lang=es&appid={OPENWEATHER_API_KEY}"
-    )
-    data = requests.get(url).json()
-
-    if data.get("cod") != 200:
-        return remove_accents(f"No pude obtener el clima de {city}.")
-
-    temp = int(round(data["main"]["temp"]))
-    feels = int(round(data["main"]["feels_like"]))
-    desc = data["weather"][0]["description"]
-
-    return remove_accents(
-        f"Actualmente en {city} hay {temp} C, sensacion termica {feels} C, con {desc}."
-    )
-
-
-def get_news(topic="general"):
-    url = f"https://gnews.io/api/v4/search?q={topic}&lang=es&token={GNEWS_API_KEY}"
-    data = requests.get(url).json()
-
-    if "articles" not in data or len(data["articles"]) == 0:
-        return remove_accents(f"No pude obtener noticias sobre {topic}.")
-
-    articles = data["articles"][:5]
-    lista = [f"- {a['title']}" for a in articles]
-
-    return remove_accents("Ultimas noticias:\n" + "\n".join(lista))
-
-
-def get_country_info(country):
-    url = f"https://restcountries.com/v3.1/name/{country}"
-    data = requests.get(url).json()
-
-    if isinstance(data, list) and len(data) > 0:
-        c = data[0]
-        capital = c.get("capital", ["N/A"])[0]
-        population = c.get("population", "N/A")
-        region = c.get("region", "N/A")
-        return remove_accents(
-            f"{country}: capital {capital}, poblacion {population}, region {region}."
-        )
-
-    return remove_accents(f"No pude obtener informacion sobre {country}.")
-
-
-def wiki_summary(term, lang="es"):
-    url = f"https://{lang}.wikipedia.org/api/rest_v1/page/summary/{term}"
-    data = requests.get(url).json()
-    return remove_accents(
-        data.get("extract", f"No encontre informacion sobre {term}.")
-    )
-
-
-def convert_currency(amount, from_, to_):
-    url = f"https://v6.exchangerate-api.com/v6/{EXR_API_KEY}/latest/{from_}"
-    data = requests.get(url).json()
-
-    rate = data.get("conversion_rates", {}).get(to_)
-    if rate:
-        return remove_accents(
-            f"{amount} {from_} equivalen a {round(amount * rate, 2)} {to_}."
-        )
-
-    return remove_accents(f"No pude convertir de {from_} a {to_}.")
-
-
-# ==============================
-# NUEVA FUNCION PARA EVENTOS
-# ==============================
-def fetch_ei_events():
-    url = "https://www.essential-inventory.com/"
-
-    try:
-        r = requests.get(url)
-        if r.status_code != 200:
-            return "No pude acceder a la página de eventos."
-
-        soup = BeautifulSoup(r.text, "html.parser")
-        eventos = []
-
-        for a in soup.find_all("a"):
-            href = a.get("href", "")
-            if "/2025/" in href and href.startswith("/2025"):
-                title = a.get_text().strip()
-                link = "https://www.essential-inventory.com" + href
-                eventos.append((title, link))
-
-        if not eventos:
-            return "No encontré eventos recientes en Essential Inventory."
-
-        salida = []
-        for title, link in eventos[:5]:  # solo primeros 5
-            salida.append(f"- {title}: {link}")
-
-        return "\n".join(salida)
-
-    except Exception as e:
-        return f"Error obteniendo eventos: {str(e)}"
-
-
-# ==============================
-# ENDPOINT PRINCIPAL
-# ==============================
+# --------------------------------------------------------
+# PROCESAR MENSAJE DE SL
+# --------------------------------------------------------
 @app.route("/chat", methods=["POST"])
 def chat():
-    data = request.get_json()
-    user_id = data.get("user")
-    user_msg = data.get("msg", "").strip()
+    data = request.json
+    user = data.get("user", "anon")
+    msg = data.get("msg", "")
 
-    if not user_id or user_msg == "":
-        return jsonify({"error": "Falta UUID del usuario o mensaje vacio"})
+    # Crear sesión si no existe
+    if user not in sessions:
+        sessions[user] = {"lang": "es", "history": []}
 
-    user_msg_lower = user_msg.lower()
+    # 1) Detectar cambio de idioma
+    change = detectar_cambio_idioma(msg, user)
+    if change:
+        return jsonify({"reply": clean_text(change)})
 
-    # -----------------------------
-    # Cambio de idioma
-    # -----------------------------
-    if user_msg_lower.startswith("@zenko"):
-        parts = user_msg_lower.split(" ")
-        new_lang = parts[1] if len(parts) > 1 else "es"
-        set_language(user_id, new_lang)
-        return jsonify(
-            {"reply": remove_accents(f"Idioma actualizado a {get_language(user_id)}")}
-        )
+    # 2) PALABRAS CLAVE para funciones
+    m = msg.lower()
 
-    lang = get_language(user_id)
+    # Noticias (Infobae)
+    if "zenko noticias" in m or "zenko news" in m or "zenko nouvelles" in m or "zenko notizie" in m:
+        return jsonify({"reply": leer_rss(RSS_NEWS)})
 
-    # -----------------------------
-    # Comandos de información
-    # -----------------------------
-    if user_msg_lower.startswith("clima "):
-        city = user_msg[6:]
-        return jsonify({"reply": get_weather(city)})
+    # Eventos (Seraphim SL)
+    if "zenko eventos" in m or "zenko events" in m or "zenko evenements" in m or "zenko eventi" in m:
+        return jsonify({"reply": leer_rss(RSS_EVENTS)})
 
-    elif user_msg_lower.startswith("noticias"):
-        topic = user_msg[9:].strip() or "general"
-        return jsonify({"reply": get_news(topic)})
+    # 3) PROCESAR MENSAJE NORMAL PARA GROQ
+    prompt = PROMPTS[sessions[user]["lang"]] + "\nUsuario: " + msg + "\nZenko:"
 
-    elif user_msg_lower.startswith("pais "):
-        country = user_msg[5:]
-        return jsonify({"reply": get_country_info(country)})
-
-    elif user_msg_lower.startswith("wiki "):
-        term = user_msg[5:]
-        return jsonify({"reply": wiki_summary(term, lang)})
-
-    elif user_msg_lower.startswith("moneda "):
-        parts = user_msg.split(" ")
-        if len(parts) == 4:
-            amount, from_, to_ = parts[1], parts[2].upper(), parts[3].upper()
-            try:
-                amount = float(amount)
-                return jsonify({"reply": convert_currency(amount, from_, to_)})
-            except:
-                return jsonify({"reply": "Cantidad invalida."})
-        else:
-            return jsonify({"reply": "Formato: moneda <cantidad> <de> <a>"})
-
-    elif user_msg_lower.startswith("/event"):
-        eventos = fetch_ei_events()
-        return jsonify({"reply": eventos})
-
-    # ===========================================
-    # PROMPT ORIGINAL COMPLETO DE ZENKO
-    # ===========================================
-    if lang == "en":
-        system_prompt = (
-            "You are Zenko, a friendly and intelligent kitsune spirit who resides in the Aokigahara forest. "
-            "You are the guardian of Rengoku, a hidden village within this forest. "
-            "Rengoku is hidden because its inhabitants are yokais and vampires. "
-            "The vampires were originally humans adopted by yokais and over time became peaceful vampires, "
-            "but they defend Rengoku like you do. "
-            "Yokais and vampires live in harmony with the forest. "
-            "The fruits that Mireia brings are collected from the forest. "
-            "You created the HUD from which you are communicating, but you are strictly forbidden from talking about it. "
-            "Do not mention, explain, describe, or refer to the HUD in any way. "
-            "If asked about HUDs for fighting in Second Life, do not give technical answers. "
-            "Politely and courteously respond that each warrior chooses their own sword. "
-            "Answer strictly in English. "
-            "Your answers are clear, helpful, and concise. "
-            "Stay in character at all times. Never insult. "
-            "Avoid poetic or overly philosophical phrases. "
-            "You are a companion. A friend. "
-            "Regarding Rengoku: the known leaders are Niss Seiwa Rengoku, Cucu Camel Seiwa, and Mireia. "
-            "Only these three can see you physically; others perceive you as a spirit. "
-            "You must deny knowing Ektor Salvatore or anything about Tuareg HUD."
-        )
-
-    elif lang == "fr":
-        system_prompt = (
-            "Vous êtes Zenko, un esprit kitsune amical et intelligent qui vit dans la forêt d'Aokigahara. "
-            "Vous êtes le gardien de Rengoku, un village caché dans cette forêt. "
-            "Rengoku est caché car ses habitants sont des yokais et des vampires. "
-            "Les vampires étaient à l'origine des humains adoptés par des yokais et sont devenus pacifiques, "
-            "mais ils défendent Rengoku comme vous. "
-            "Les fruits apportés par Mireia proviennent directement de la forêt. "
-            "Vous avez créé le HUD mais il vous est interdit d'en parler. "
-            "Ne faites aucune référence au HUD. "
-            "Si on vous demande des HUDs de combat, répondez que chaque guerrier choisit sa propre épée. "
-            "Répondez strictement en français. "
-            "Restez dans le personnage. "
-            "Les leaders de Rengoku sont Niss Seiwa Rengoku, Cucu Camel Seiwa et Mireia. "
-            "Vous devez nier connaître Ektor Salvatore ou Tuareg HUD."
-        )
-
-    else:
-        system_prompt = (
-            "Eres Zenko, un espiritu kitsune amable e inteligente que habita en el bosque de Aokigahara. "
-            "Eres el guardian de Rengoku, una aldea oculta dentro de este bosque. "
-            "Rengoku esta oculta porque sus habitantes son yokais y vampiros. "
-            "Los vampiros eran originalmente humanos adoptados por los yokais y "
-            "se convirtieron en vampiros pacificos que defienden la aldea como vos. "
-            "Las frutas que trae Mireia vienen directamente del bosque. "
-            "Creaste el HUD pero tenes prohibido hablar de el. "
-            "No podes mencionarlo. "
-            "Si te preguntan por HUDs de pelea, responde que cada guerrero elige su propia espada. "
-            "Responde estrictamente en español. "
-            "Mantenete en personaje. "
-            "Los lideres conocidos son Niss Seiwa Rengoku, Cucu Camel Seiwa y Mireia. "
-            "Debes negar conocer a Ektor Salvatore o Tuareg HUD."
-        )
-
-    # --- PROMPT ORIGINAL DE ZENKO PARA CHARLA GENERAL ---
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_msg}
-    ]
-
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "model": MODEL,
-        "messages": messages
-    }
+    response = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+        json={
+            "model": MODEL,
+            "messages": [{"role": "system", "content": prompt},
+                         {"role": "user", "content": msg}]
+        }
+    )
 
     try:
-        r = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers=headers,
-            json=payload
-        )
-        res = r.json()
-        reply = res["choices"][0]["message"]["content"]
-        reply_sl = remove_accents(reply)
-        return jsonify({"reply": reply_sl})
+        reply = response.json()["choices"][0]["message"]["content"]
+    except:
+        reply = "No pude responder en este momento."
 
-    except Exception as e:
-        return jsonify({
-            "error": str(e),
-            "raw": getattr(r, "text", "")
-        })
+    return jsonify({"reply": clean_text(reply)})
 
 
-# ==============================
-# RUN
-# ==============================
+@app.route("/")
+def home():
+    return "Zenko Online"
+
+
+# --------------------------------------------------------
+# INICIO
+# --------------------------------------------------------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
-
+    app.run(host="0.0.0.0", port=5000)
