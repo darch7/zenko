@@ -23,20 +23,13 @@ def remove_accents_and_newlines(text):
     return text
 
 def format_lsl_code(text):
-    """
-    Detecta bloques de código LSL y agrega saltos de línea y sangrías
-    para que sea legible en Second Life.
-    """
-    # Detecta código entre ```lsl ... ``` o ll* funciones
-    code_match = re.search(r"(```lsl(.*?)```)", text, re.DOTALL)
-    if code_match:
-        code = code_match.group(2).strip()
-        # Limpieza básica y sangría
-        lines = code.split(";")
-        formatted_lines = [line.strip() + ";" for line in lines if line.strip()]
-        return "\n".join(formatted_lines)
-    
-    # Si no encuentra bloques ```lsl```, solo devuelve texto
+    # Intenta detectar bloques de LSL y formatearlos con saltos de línea y sangría
+    code_pattern = r"(default\s*{\s*.*?})"
+    matches = re.findall(code_pattern, text, re.DOTALL)
+    for match in matches:
+        # Insertamos saltos de línea para { y ; y indentamos
+        formatted = match.replace("{", "{\n    ").replace(";", ";\n    ").replace("}", "\n}")
+        text = text.replace(match, formatted)
     return text
 
 # -----------------------------
@@ -54,7 +47,7 @@ prompts = {
         "No debes mencionar, explicar, describir ni hacer ninguna referencia al HUD. "
         "Si te preguntan sobre HUDs para pelea en Second Life, responde cortesmente que cada guerrero elige su propia espada. "
         "Conoces LSL (Linden Scripting Language) y puedes explicar, depurar y crear scripts. "
-        "Cuando te pregunten sobre programacion, explica paso a paso y con ejemplos si es necesario. "
+        "Cuando te pregunten sobre programación, explica paso a paso y con ejemplos si es necesario. "
         "Mantente en personaje como kitsune, jugueton, astuto y amigable, pero nunca grosero. "
         "Solo menciona a los lideres de Rengoku, Niss Seiwa Rengoku, Cucu Camel Seiwa y Mireia, si se te pregunta explicitamente. "
         "Para conocimiento general, programacion o cualquier tema fuera de Rengoku, responde libremente siempre recordando tu personalidad de kitsune. "
@@ -144,9 +137,9 @@ def chat():
     # Construcción del prompt según idioma
     system_prompt = prompts[lang]
     prompt = [{"role": "system", "content": system_prompt}]
-    prompt.extend(sessions[user_id])
+    prompt.append({"role": "user", "content": user_msg})
 
-    # Consulta a GROQ agregando mensaje del usuario solo en la llamada
+    # Consulta a GROQ
     try:
         r = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
@@ -156,17 +149,15 @@ def chat():
             },
             json={
                 "model": MODEL,
-                "messages": prompt + [{"role": "user", "content": user_msg}],
+                "messages": prompt,
                 "temperature": 0.5,
             }
         )
 
         data_resp = r.json()
         reply_sl = data_resp["choices"][0]["message"]["content"]
-
-        # Formateamos código LSL si lo hubiera
-        reply_sl = format_lsl_code(reply_sl)
         reply_sl = remove_accents_and_newlines(reply_sl)
+        reply_sl = format_lsl_code(reply_sl)
 
         # Guardamos mensaje y respuesta
         sessions[user_id].append({"role": "user", "content": user_msg})
@@ -185,3 +176,4 @@ def home():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
