@@ -6,7 +6,8 @@ import unicodedata
 app = Flask(__name__)
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-MODEL = "llama-3.1-8b-instant"
+MODEL_MAIN = "deepseek-r1-distill-groq"
+MODEL_FALLBACK = "llama-3.1-8b-instant"
 
 # APIs externas
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
@@ -37,6 +38,41 @@ def get_language(user_id):
     if user_id in sessions and "lang" in sessions[user_id]:
         return sessions[user_id]["lang"]
     return "es"
+
+# ================================
+#       FUNCION PARA LLAMAR MODELO
+# ================================
+def call_groq(messages):
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    # 1️⃣ Intento principal: DeepSeek
+    payload = {
+        "model": MODEL_MAIN,
+        "messages": messages,
+        "temperature": 0.7
+    }
+
+    try:
+        r = requests.post(url, json=payload, headers=headers)
+        data = r.json()
+        if "choices" in data:
+            return data["choices"][0]["message"]["content"]
+    except:
+        pass
+
+    # 2️⃣ Fallback: Llama 3.1
+    payload["model"] = MODEL_FALLBACK
+    r = requests.post(url, json=payload, headers=headers)
+    data = r.json()
+
+    if "choices" in data:
+        return data["choices"][0]["message"]["content"]
+
+    return "No pude obtener respuesta del modelo."
 
 # ================================
 #     RESTO DE FUNCIONES
@@ -203,14 +239,12 @@ def chat():
 
     # --- NUEVO COMANDO PARA PROGRAMACION ---
     if user_msg_lower.startswith("programa "):
-        # Sintaxis: programa <lenguaje> <descripcion de la tarea>
         parts = user_msg.split(" ", 2)
         if len(parts) < 3:
             return jsonify({"reply": "Formato: programa <lenguaje> <tarea o problema a resolver>"})
         lenguaje = parts[1].lower()
         tarea = parts[2]
 
-        # Añadimos al prompt original de Zenko
         prog_prompt = (
             f"{system_prompt}\n"
             f"Ahora debes actuar como un tutor de programación. "
@@ -226,24 +260,9 @@ def chat():
             {"role": "user", "content": user_msg}
         ]
 
-        payload_prog = {
-            "model": MODEL,
-            "messages": messages_prog
-        }
-
-        headers = {
-            "Authorization": f"Bearer {GROQ_API_KEY}",
-            "Content-Type": "application/json"
-        }
-
-        try:
-            r = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload_prog)
-            res = r.json()
-            reply = res["choices"][0]["message"]["content"]
-            reply_sl = remove_accents(reply)
-            return jsonify({"reply": reply_sl})
-        except Exception as e:
-            return jsonify({"error": str(e), "raw": getattr(r, "text", "")})
+        reply = call_groq(messages_prog)
+        reply_sl = remove_accents(reply)
+        return jsonify({"reply": reply_sl})
 
     # --- PROMPT ORIGINAL DE ZENKO PARA CHARLA GENERAL ---
     messages = [
@@ -251,22 +270,6 @@ def chat():
         {"role": "user", "content": user_msg}
     ]
 
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "model": MODEL,
-        "messages": messages
-    }
-
-    try:
-        r = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload)
-        res = r.json()
-        reply = res["choices"][0]["message"]["content"]
-        reply_sl = remove_accents(reply)
-        return jsonify({"reply": reply_sl})
-    except Exception as e:
-        return jsonify({"error": str(e), "raw": getattr(r, "text", "")})
-        
+    reply = call_groq(messages)
+    reply_sl = remove_accents(reply)
+    return jsonify({"reply": reply_sl})
