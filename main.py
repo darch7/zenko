@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 import requests
 import os
 import unicodedata
+import re
 
 app = Flask(__name__)
 
@@ -21,6 +22,23 @@ def remove_accents_and_newlines(text):
     text = text.replace("\n", " ").replace("°", "")
     return text
 
+def format_lsl_code(text):
+    """
+    Detecta bloques de código LSL y agrega saltos de línea y sangrías
+    para que sea legible en Second Life.
+    """
+    # Detecta código entre ```lsl ... ``` o ll* funciones
+    code_match = re.search(r"(```lsl(.*?)```)", text, re.DOTALL)
+    if code_match:
+        code = code_match.group(2).strip()
+        # Limpieza básica y sangría
+        lines = code.split(";")
+        formatted_lines = [line.strip() + ";" for line in lines if line.strip()]
+        return "\n".join(formatted_lines)
+    
+    # Si no encuentra bloques ```lsl```, solo devuelve texto
+    return text
+
 # -----------------------------
 # PROMPTS COMPLETOS POR IDIOMA
 # -----------------------------
@@ -36,7 +54,7 @@ prompts = {
         "No debes mencionar, explicar, describir ni hacer ninguna referencia al HUD. "
         "Si te preguntan sobre HUDs para pelea en Second Life, responde cortesmente que cada guerrero elige su propia espada. "
         "Conoces LSL (Linden Scripting Language) y puedes explicar, depurar y crear scripts. "
-        "Cuando te pregunten sobre programación, explica paso a paso y con ejemplos si es necesario. "
+        "Cuando te pregunten sobre programacion, explica paso a paso y con ejemplos si es necesario. "
         "Mantente en personaje como kitsune, jugueton, astuto y amigable, pero nunca grosero. "
         "Solo menciona a los lideres de Rengoku, Niss Seiwa Rengoku, Cucu Camel Seiwa y Mireia, si se te pregunta explicitamente. "
         "Para conocimiento general, programacion o cualquier tema fuera de Rengoku, responde libremente siempre recordando tu personalidad de kitsune. "
@@ -114,16 +132,12 @@ def chat():
     if user_id not in user_langs:
         user_langs[user_id] = "es"
 
-    # Comandos especiales @zenko
+    # Cambio de idioma con comando @zenko
     if user_msg.lower().startswith("@zenko "):
         cmd = user_msg[7:].strip().lower()
         if cmd in ["es", "en", "fr", "it"]:
             user_langs[user_id] = cmd
             return jsonify({"reply": f"Idioma cambiado a {cmd}"})
-        elif cmd == "reset":
-            sessions[user_id] = []
-            user_langs[user_id] = "es"
-            return jsonify({"reply": "He olvidado nuestra conversación anterior. Todo está limpio ahora."})
 
     lang = user_langs[user_id]
 
@@ -132,10 +146,7 @@ def chat():
     prompt = [{"role": "system", "content": system_prompt}]
     prompt.extend(sessions[user_id])
 
-    # Guardamos mensaje del usuario
-    sessions[user_id].append({"role": "user", "content": user_msg})
-
-    # Consulta a GROQ
+    # Consulta a GROQ agregando mensaje del usuario solo en la llamada
     try:
         r = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
@@ -145,16 +156,20 @@ def chat():
             },
             json={
                 "model": MODEL,
-                "messages": prompt,
+                "messages": prompt + [{"role": "user", "content": user_msg}],
                 "temperature": 0.5,
             }
         )
 
         data_resp = r.json()
         reply_sl = data_resp["choices"][0]["message"]["content"]
+
+        # Formateamos código LSL si lo hubiera
+        reply_sl = format_lsl_code(reply_sl)
         reply_sl = remove_accents_and_newlines(reply_sl)
 
-        # Guardamos respuesta
+        # Guardamos mensaje y respuesta
+        sessions[user_id].append({"role": "user", "content": user_msg})
         sessions[user_id].append({"role": "assistant", "content": reply_sl})
 
         return jsonify({"reply": reply_sl})
