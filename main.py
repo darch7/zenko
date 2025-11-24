@@ -8,7 +8,6 @@ app = Flask(__name__)
 # -----------------------------
 # API Keys desde variables de entorno
 # -----------------------------
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 GNEWS_API_KEY = os.getenv("GNEWS_API_KEY")
@@ -141,7 +140,7 @@ def chat():
             return jsonify({"reply": "Formato: moneda <cantidad> <de> <a>"})
 
     # -----------------------------
-    # Prompt completo de Zenko (exactamente como me diste)
+    # Prompt completo de Zenko
     # -----------------------------
     if lang == "en":
         system_prompt = (
@@ -205,7 +204,7 @@ def chat():
         )
 
     # -----------------------------
-    # Llamada a DeepSeek (manteniendo prompt intacto)
+    # Prompt general Zenko usando Groq
     # -----------------------------
     messages = [
         {"role": "system", "content": system_prompt},
@@ -213,18 +212,17 @@ def chat():
     ]
 
     payload = {
-        "model": "deepseek",
+        "model": "llama-3.1-8b-instant",
         "messages": messages
     }
 
     headers = {
-        "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+        "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json"
     }
 
     try:
-        r = requests.post("https://api.deepseek.com/v1/chat/completions", headers=headers, json=payload)
-        r.raise_for_status()
+        r = requests.post("https://api.groq.ai/v1/completions", headers=headers, json=payload, timeout=30)
         res = r.json()
         reply = res["choices"][0]["message"]["content"]
         reply_sl = remove_accents(reply)
@@ -237,4 +235,3 @@ def chat():
 # -----------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
