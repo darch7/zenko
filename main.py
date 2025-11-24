@@ -32,16 +32,20 @@ def fetch_rss(url):
         r = requests.get(url, timeout=10)
         if r.status_code != 200:
             return "No pude acceder al RSS."
+
         soup = BeautifulSoup(r.text, "xml")
         items = soup.find_all("item")
         if not items:
-            return "No encontré resultados en el RSS."
+            return "No encontre resultados en el RSS."
+
         salida = []
         for item in items[:5]:
             title = item.title.get_text(strip=True)
             link = item.link.get_text(strip=True)
             salida.append(f"- {title}: {link}")
+
         return "\n".join(salida)
+
     except Exception as e:
         return f"Error leyendo RSS: {str(e)}"
 
@@ -59,16 +63,21 @@ def search_firecrawl(query):
         url = "https://api.firecrawl.dev/v1/search"
         data = {"query": query}
         headers = {"Content-Type": "application/json"}
+
         r = requests.post(url, json=data, headers=headers)
         js = r.json()
+
         if "results" not in js:
-            return "No encontré resultados en Firecrawl."
+            return "No encontre resultados en Firecrawl."
+
         salida = []
         for item in js["results"][:5]:
-            title = item.get("title", "Sin título")
+            title = item.get("title", "Sin titulo")
             link = item.get("url", "")
             salida.append(f"- {title}: {link}")
+
         return "\n".join(salida)
+
     except Exception as e:
         return f"Error en Firecrawl: {str(e)}"
 
@@ -80,16 +89,15 @@ def chat():
     data = request.get_json()
     user_id = data.get("user_id", "anon")
     user_msg = data.get("message", "")
-    user_msg_lower = user_msg.lower().strip()
+    msg_lower = user_msg.lower().strip()
 
     # ---------------------------------------
     # DETECCIÓN DE IDIOMA AUTOMÁTICA
     # ---------------------------------------
     lang = "es"
-    msg = user_msg.lower()
-    if any(w in msg for w in ["hello", "hi", "weather", "news"]):
+    if any(w in msg_lower for w in ["hello", "hi", "weather", "news"]):
         lang = "en"
-    elif any(w in msg for w in ["bonjour", "salut"]):
+    elif any(w in msg_lower for w in ["bonjour", "salut"]):
         lang = "fr"
 
     # Diccionario de comandos según idioma (sin /)
@@ -112,17 +120,17 @@ def chat():
     }
 
     # ---------------------------------------
-    # COMANDOS PERSONALIZADOS
+    # COMANDOS PERSONALIZADOS SEGÚN IDIOMA
     # ---------------------------------------
-    if user_msg_lower.startswith(commands["news"][lang]):
+    if msg_lower.startswith(commands["news"][lang]):
         reply = rss_infobae()
         return jsonify({"reply": sanitize_output(reply)})
 
-    if user_msg_lower.startswith(commands["event"][lang]):
+    if msg_lower.startswith(commands["event"][lang]):
         reply = rss_seraphim()
         return jsonify({"reply": sanitize_output(reply)})
 
-    if user_msg_lower.startswith(commands["search"][lang]):
+    if msg_lower.startswith(commands["search"][lang]):
         query = user_msg[len(commands["search"][lang]):].strip()
         reply = search_firecrawl(query)
         return jsonify({"reply": sanitize_output(reply)})
@@ -201,7 +209,9 @@ def chat():
     prompt = [{"role": "system", "content": system_prompt}]
     prompt.extend(sessions[user_id])
 
+    # ---------------------------------------
     # CONSULTA A GROQ
+    # ---------------------------------------
     try:
         r = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
@@ -233,3 +243,5 @@ def home():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+
