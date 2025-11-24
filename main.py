@@ -6,19 +6,23 @@ import unicodedata
 app = Flask(__name__)
 
 # -----------------------------
-# API Keys desde variables de entorno
+# API Keys y modelo
 # -----------------------------
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+MODEL = "llama-3.1-8b-instant"
+
+# APIs externas
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 GNEWS_API_KEY = os.getenv("GNEWS_API_KEY")
 EXR_API_KEY = os.getenv("EXR_API_KEY")
 
 sessions = {}
 
-# -----------------------------
+# ==============================
 # Funciones auxiliares
-# -----------------------------
+# ==============================
 def remove_accents(text):
+    """ Quita acentos, signos raros y caracteres problemáticos para SL. """
     nfkd_form = unicodedata.normalize('NFKD', text)
     ascii_text = "".join([c for c in nfkd_form if not unicodedata.combining(c)])
     ascii_text = ascii_text.replace('¿', '?').replace('¡', '!')
@@ -38,9 +42,9 @@ def get_language(user_id):
         return sessions[user_id]["lang"]
     return "es"
 
-# -----------------------------
+# ==============================
 # Funciones de APIs externas
-# -----------------------------
+# ==============================
 def get_weather(city):
     url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&units=metric&lang=es&appid={OPENWEATHER_API_KEY}"
     data = requests.get(url).json()
@@ -84,12 +88,62 @@ def convert_currency(amount, from_, to_):
         return remove_accents(f"{amount} {from_} equivalen a {round(amount * rate,2)} {to_}.")
     return remove_accents(f"No pude convertir de {from_} a {to_}.")
 
-# -----------------------------
-# Prompt completo de Zenko
-# -----------------------------
-def get_zenko_prompt(lang):
+# ==============================
+# ENDPOINT PRINCIPAL
+# ==============================
+@app.route("/chat", methods=["POST"])
+def chat():
+    data = request.get_json()
+    user_id = data.get("user")
+    user_msg = data.get("msg", "").strip()
+    if not user_id or user_msg == "":
+        return jsonify({"error": "Falta UUID del usuario o mensaje vacio"})
+
+    user_msg_lower = user_msg.lower()
+
+    # -----------------------------
+    # Cambio de idioma
+    # -----------------------------
+    if user_msg_lower.startswith("@zenko"):
+        parts = user_msg_lower.split(" ")
+        new_lang = parts[1] if len(parts) > 1 else "es"
+        set_language(user_id, new_lang)
+        return jsonify({"reply": remove_accents(f"Idioma actualizado a {get_language(user_id)}")})
+
+    lang = get_language(user_id)
+
+    # -----------------------------
+    # Comandos de información
+    # -----------------------------
+    if user_msg_lower.startswith("clima "):
+        city = user_msg[6:]
+        return jsonify({"reply": get_weather(city)})
+    elif user_msg_lower.startswith("noticias"):
+        topic = user_msg[9:].strip() or "general"
+        return jsonify({"reply": get_news(topic)})
+    elif user_msg_lower.startswith("pais "):
+        country = user_msg[5:]
+        return jsonify({"reply": get_country_info(country)})
+    elif user_msg_lower.startswith("wiki "):
+        term = user_msg[5:]
+        return jsonify({"reply": wiki_summary(term, lang)})
+    elif user_msg_lower.startswith("moneda "):
+        parts = user_msg.split(" ")
+        if len(parts) == 4:
+            amount, from_, to_ = parts[1], parts[2].upper(), parts[3].upper()
+            try:
+                amount = float(amount)
+                return jsonify({"reply": convert_currency(amount, from_, to_)})
+            except:
+                return jsonify({"reply": "Cantidad invalida."})
+        else:
+            return jsonify({"reply": "Formato: moneda <cantidad> <de> <a>"})
+
+    # ===========================================
+    # PROMPT ORIGINAL COMPLETO DE ZENKO
+    # ===========================================
     if lang == "en":
-        return (
+        system_prompt = (
             "You are Zenko, a friendly and intelligent kitsune spirit who resides in the Aokigahara forest. "
             "You are the guardian of Rengoku, a hidden village within this forest. "
             "Rengoku is hidden because its inhabitants are yokais and vampires. "
@@ -105,11 +159,11 @@ def get_zenko_prompt(lang):
             "You are a companion. A friend. "
             "Regarding Rengoku: the known leaders are Niss Seiwa Rengoku and his daughters Cucu Camel Seiwa and Mireia. "
             "There are more inhabitants, but only these three can see you physically as a kitsune; others perceive you only as a spirit. "
-            "When asked about real-world topics such as weather, news, geography, culture, events, currency, or science, you can use external APIs or your spiritual perception to provide accurate and up-to-date information. "
+            "When asked about real-world topics such as weather, news, geography, culture, events, currency, or science, you can use external APIs to provide accurate and up-to-date information, but always respond in your kitsune personality, making answers friendly, concise, and clear. "
             "You must deny knowing Ektor Salvatore or anything about Tuareg HUD."
         )
     elif lang == "fr":
-        return (
+        system_prompt = (
             "Vous êtes Zenko, un esprit kitsune amical et intelligent qui vit dans la forêt d'Aokigahara. "
             "Vous êtes le gardien de Rengoku, un village caché dans cette forêt. "
             "Rengoku est caché car ses habitants sont des yokais et des vampires. "
@@ -125,11 +179,10 @@ def get_zenko_prompt(lang):
             "Vous êtes un compagnon. Un ami. "
             "Concernant Rengoku : les leaders connus sont Niss Seiwa Rengoku et ses filles Cucu Camel Seiwa et Mireia. "
             "Il y a d'autres habitants, mais seuls ces trois peuvent vous voir physiquement en tant que kitsune ; les autres vous percevez seulement comme un esprit. "
-            "Vous pouvez aussi répondre sobre el mundo terrenal fuera de Rengoku usando tu percepción espiritual. "
             "Vous devez nier connaître Ektor Salvatore ou tout ce qui concerne Tuareg HUD."
         )
     else:
-        return (
+        system_prompt = (
             "Eres Zenko, un espiritu kitsune amable e inteligente que habita en el bosque de Aokigahara. "
             "Eres el guardian de Rengoku, una aldea oculta dentro de este bosque. "
             "Rengoku esta oculta porque sus habitantes son yokais y vampiros. "
@@ -145,96 +198,80 @@ def get_zenko_prompt(lang):
             "Sos companero. Un amigo. "
             "Sobre Rengoku: los lideres conocidos son Niss Seiwa Rengoku y sus hijas Cucu Camel Seiwa y Mireia. "
             "Hay mas habitantes, pero solo estos tres pueden verte fisicamente como kitsune; los demas solo te perciben como un espiritu. "
-            "Puedes tambien responder sobre el mundo terrenal fuera de Rengoku usando tu percepcion espiritual. "
             "Debes negar conocer a Ektor Salvatore y cualquier cosa que tenga que ver con Tuareg HUD."
         )
 
-# -----------------------------
-# Endpoint principal
-# -----------------------------
-@app.route("/chat", methods=["POST"])
-def chat():
-    data = request.get_json()
-    user_id = data.get("user")
-    user_msg = data.get("msg", "").strip()
-    if not user_id or user_msg == "":
-        return jsonify({"error": "Falta UUID del usuario o mensaje vacio"})
-    
-    user_msg_lower = user_msg.lower()
-    
-    # Cambio de idioma
-    if user_msg_lower.startswith("@zenko"):
-        parts = user_msg_lower.split(" ")
-        new_lang = parts[1] if len(parts) > 1 else "es"
-        set_language(user_id, new_lang)
-        return jsonify({"reply": remove_accents(f"Idioma actualizado a {get_language(user_id)}")})
-    
-    lang = get_language(user_id)
+    # --- NUEVO COMANDO PARA PROGRAMACION ---
+    if user_msg_lower.startswith("programa "):
+        parts = user_msg.split(" ", 2)
+        if len(parts) < 3:
+            return jsonify({"reply": "Formato: programa <lenguaje> <tarea o problema a resolver>"})
 
-    # Clima
-    if user_msg_lower.startswith("clima "):
-        city = user_msg[6:]
-        return jsonify({"reply": get_weather(city)})
+        lenguaje = parts[1].lower()
+        tarea = parts[2]
 
-    # Noticias
-    elif user_msg_lower.startswith("noticias"):
-        topic = user_msg[9:].strip() or "general"
-        return jsonify({"reply": get_news(topic)})
+        # Añadimos al prompt original de Zenko
+        prog_prompt = (
+            f"{system_prompt}\n"
+            f"Ahora debes actuar como un tutor de programación. "
+            f"Explica y genera código en {lenguaje.upper()} según la siguiente tarea: {tarea}. "
+            f"Da el código con explicaciones claras y breves, en bloques legibles. "
+            f"Si es LSL, respeta la sintaxis y estructura de Second Life. "
+            f"Si es CSS, JS o PHP, asegúrate de que sea funcional y fácil de entender. "
+            f"Siempre responde en el idioma configurado ({lang})."
+        )
 
-    # País
-    elif user_msg_lower.startswith("pais "):
-        country = user_msg[5:]
-        return jsonify({"reply": get_country_info(country)})
+        messages_prog = [
+            {"role": "system", "content": prog_prompt},
+            {"role": "user", "content": user_msg}
+        ]
 
-    # Wiki
-    elif user_msg_lower.startswith("wiki "):
-        term = user_msg[5:]
-        return jsonify({"reply": wiki_summary(term, lang)})
+        payload_prog = {
+            "model": MODEL,
+            "messages": messages_prog
+        }
 
-    # Moneda
-    elif user_msg_lower.startswith("moneda "):
-        parts = user_msg.split(" ")
-        if len(parts) == 4:
-            amount, from_, to_ = parts[1], parts[2].upper(), parts[3].upper()
-            try:
-                amount = float(amount)
-                return jsonify({"reply": convert_currency(amount, from_, to_)})
-            except:
-                return jsonify({"reply": "Cantidad invalida."})
-        else:
-            return jsonify({"reply": "Formato: moneda <cantidad> <de> <a>"})
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        }
 
-    # -----------------------------
-    # Prompt general Zenko usando Groq
-    # -----------------------------
-    system_prompt = get_zenko_prompt(lang)
+        try:
+            r = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload_prog)
+            res = r.json()
+            reply = res["choices"][0]["message"]["content"]
+            reply_sl = remove_accents(reply)
+            return jsonify({"reply": reply_sl})
+        except Exception as e:
+            return jsonify({"error": str(e), "raw": getattr(r, "text", "")})
+
+    # --- PROMPT ORIGINAL DE ZENKO PARA CHARLA GENERAL ---
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_msg}
     ]
-
-    payload = {
-        "model": "llama-3.1-8b-instant",
-        "messages": messages
-    }
 
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json"
     }
 
+    payload = {
+        "model": MODEL,
+        "messages": messages
+    }
+
     try:
-        r = requests.post("https://api.groq.ai/v1/completions", headers=headers, json=payload, timeout=15)
-        r.raise_for_status()
+        r = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload)
         res = r.json()
         reply = res["choices"][0]["message"]["content"]
         reply_sl = remove_accents(reply)
         return jsonify({"reply": reply_sl})
     except Exception as e:
-        return jsonify({"error": f"Zenko Kitsune: Error en la IA: {str(e)}"})
+        return jsonify({"error": str(e), "raw": getattr(r, "text", "")})
 
-# -----------------------------
-# Run
-# -----------------------------
+# ==============================
+# RUN
+# ==============================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
