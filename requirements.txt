@@ -6,6 +6,7 @@ geopy
 timezonefinder
 beautifulsoup4
 lxml
+feedparser
 
 
 
