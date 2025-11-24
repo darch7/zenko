@@ -5,10 +5,9 @@ import unicodedata
 
 app = Flask(__name__)
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-MODEL = "llama-3.1-8b-instant"  # Llama como alternativo
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-DEEPSEEK_MODEL = "deepseek-1.0"  # DeepSeek como predeterminado
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+MODEL = "llama-3.1-8b-instant"
 
 # APIs externas
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
@@ -38,7 +37,7 @@ def get_language(user_id):
     return "es"
 
 # ================================
-#     FUNCIONES EXTERNAS
+#     FUNCIONES AUXILIARES
 # ================================
 def get_weather(city):
     url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&units=metric&lang=es&appid={OPENWEATHER_API_KEY}"
@@ -84,33 +83,40 @@ def convert_currency(amount, from_, to_):
     return remove_accents(f"No pude convertir de {from_} a {to_}.")
 
 # ================================
-#     FUNCION DE RESPUESTA AI
+#       FUNCION CENTRAL PARA IA
 # ================================
-def get_ai_reply(user_msg, system_prompt, model="deepseek"):
-    messages = [{"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_msg}]
-    
-    if model == "deepseek":
-        url = "https://api.deepseek.ai/v1/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-            "Content-Type": "application/json"
-        }
-    else:
-        url = "https://api.groq.com/openai/v1/chat/completions"
+def call_ai(user_msg, system_prompt, use_groq=False):
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_msg}
+    ]
+
+    if use_groq:
         headers = {
             "Authorization": f"Bearer {GROQ_API_KEY}",
             "Content-Type": "application/json"
         }
-    
-    payload = {
-        "model": MODEL if model=="llama" else DEEPSEEK_MODEL,
-        "messages": messages
-    }
-    
-    r = requests.post(url, headers=headers, json=payload)
-    res = r.json()
-    return remove_accents(res["choices"][0]["message"]["content"])
+        payload = {"model": MODEL, "messages": messages}
+        url = "https://api.groq.com/openai/v1/chat/completions"
+    else:
+        headers = {
+            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        payload = {"prompt": user_msg, "model": "deepseek-latest"}
+        url = "https://api.deepseek.ai/v1/complete"
+
+    try:
+        r = requests.post(url, headers=headers, json=payload, timeout=15)
+        r.raise_for_status()
+        res = r.json()
+        if use_groq:
+            reply = res["choices"][0]["message"]["content"]
+        else:
+            reply = res.get("reply", res.get("text", "No obtuve respuesta"))
+        return remove_accents(reply)
+    except Exception as e:
+        return f"Error en la IA: {str(e)}"
 
 # ================================
 #       ENDPOINT PRINCIPAL
@@ -122,42 +128,44 @@ def chat():
     user_msg = data.get("msg", "").strip()
     if not user_id or user_msg == "":
         return jsonify({"error": "Falta UUID del usuario o mensaje vacio"})
-    
+
     user_msg_lower = user_msg.lower()
-    
-    # Cambio de idioma
     if user_msg_lower.startswith("@zenko"):
         parts = user_msg_lower.split(" ")
         new_lang = parts[1] if len(parts) > 1 else "es"
         set_language(user_id, new_lang)
         return jsonify({"reply": remove_accents(f"Idioma actualizado a {get_language(user_id)}")})
-    
+
     lang = get_language(user_id)
 
-    # Comandos específicos
+    # Comandos conocidos
     if user_msg_lower.startswith("clima "):
-        return jsonify({"reply": get_weather(user_msg[6:])})
+        city = user_msg[6:]
+        return jsonify({"reply": get_weather(city)})
     elif user_msg_lower.startswith("noticias"):
         topic = user_msg[9:].strip() or "general"
         return jsonify({"reply": get_news(topic)})
     elif user_msg_lower.startswith("pais "):
-        return jsonify({"reply": get_country_info(user_msg[5:])})
+        country = user_msg[5:]
+        return jsonify({"reply": get_country_info(country)})
     elif user_msg_lower.startswith("wiki "):
-        return jsonify({"reply": wiki_summary(user_msg[5:], lang)})
+        term = user_msg[5:]
+        return jsonify({"reply": wiki_summary(term, lang)})
     elif user_msg_lower.startswith("moneda "):
         parts = user_msg.split(" ")
         if len(parts) == 4:
             try:
                 amount = float(parts[1])
-                return jsonify({"reply": convert_currency(amount, parts[2].upper(), parts[3].upper())})
+                from_, to_ = parts[2].upper(), parts[3].upper()
+                return jsonify({"reply": convert_currency(amount, from_, to_)})
             except:
                 return jsonify({"reply": "Cantidad invalida."})
         else:
             return jsonify({"reply": "Formato: moneda <cantidad> <de> <a>"})
 
-    # ===========================================
-    # PROMPT ORIGINAL DE ZENKO
-    # ===========================================
+    # ================================
+    # PROMPT COMPLETO DE ZENKO (mantener tal cual)
+    # ================================
     if lang == "en":
         system_prompt = (
             "You are Zenko, a friendly and intelligent kitsune spirit who resides in the Aokigahara forest. "
@@ -175,7 +183,7 @@ def chat():
             "You are a companion. A friend. "
             "Regarding Rengoku: the known leaders are Niss Seiwa Rengoku and his daughters Cucu Camel Seiwa and Mireia. "
             "There are more inhabitants, but only these three can see you physically as a kitsune; others perceive you only as a spirit. "
-            "When asked about real-world topics such as weather, news, geography, culture, events, currency, or science, you can use external APIs or DeepSeek to provide accurate and up-to-date information, but always respond in your kitsune personality, making answers friendly, concise, and clear. "
+            "When asked about real-world topics such as weather, news, geography, culture, events, currency, or science, you can use external APIs to provide accurate and up-to-date information, but always respond in your kitsune personality, making answers friendly, concise, and clear. "
             "You must deny knowing Ektor Salvatore or anything about Tuareg HUD."
         )
     elif lang == "fr":
@@ -224,20 +232,11 @@ def chat():
             return jsonify({"reply": "Formato: programa <lenguaje> <tarea o problema a resolver>"})
         lenguaje = parts[1].lower()
         tarea = parts[2]
-        prog_prompt = (
-            f"{system_prompt}\n"
-            f"Ahora debes actuar como un tutor de programación. "
-            f"Explica y genera código en {lenguaje.upper()} según la siguiente tarea: {tarea}. "
-            f"Da el código con explicaciones claras y breves, en bloques legibles. "
-            f"Si es LSL, respeta la sintaxis y estructura de Second Life. "
-            f"Si es CSS, JS o PHP, asegúrate de que sea funcional y fácil de entender. "
-            f"Siempre responde en el idioma configurado ({lang})."
-        )
-        return jsonify({"reply": get_ai_reply(user_msg, prog_prompt, model="llama")})
+        prog_prompt = f"{system_prompt}\nAhora debes actuar como un tutor de programación. Explica y genera código en {lenguaje.upper()} según la siguiente tarea: {tarea}. Da el código con explicaciones claras y breves, en bloques legibles. Si es LSL, respeta la sintaxis y estructura de Second Life. Siempre responde en el idioma configurado ({lang})."
+        return jsonify({"reply": call_ai(user_msg=prog_prompt, system_prompt=prog_prompt)})
 
-    # --- RESPUESTA GENERAL (DeepSeek predeterminado) ---
-    reply_sl = get_ai_reply(user_msg, system_prompt, model="deepseek")
-    return jsonify({"reply": reply_sl})
+    # --- RESPUESTA GENERAL DE ZENKO ---
+    return jsonify({"reply": call_ai(user_msg=user_msg, system_prompt=system_prompt)})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
