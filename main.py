@@ -6,171 +6,133 @@ from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
-# -----------------------------
-# API Keys y modelo
-# -----------------------------
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 MODEL = "llama-3.1-8b-instant"
 
-# APIs externas
-OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
-GNEWS_API_KEY = os.getenv("GNEWS_API_KEY")
-EXR_API_KEY = os.getenv("EXR_API_KEY")
-
+# Guardamos sesiones por usuario
 sessions = {}
 
-# ==============================
-# Funciones auxiliares
-# ==============================
+# -----------------------------
+# FUNCIONES DE LIMPIEZA
+# -----------------------------
 def remove_accents(text):
-    nfkd_form = unicodedata.normalize('NFKD', text)
-    ascii_text = "".join([c for c in nfkd_form if not unicodedata.combining(c)])
-    ascii_text = ascii_text.replace('¿', '?').replace('¡', '!')
-    ascii_text = ascii_text.replace('°', '')  # elimina símbolo de grado
-    return ascii_text
+    nfkd_form = unicodedata.normalize("NFKD", text)
+    return "".join([c for c in nfkd_form if not unicodedata.combining(c)])
 
-def set_language(user_id, lang):
-    if user_id not in sessions:
-        sessions[user_id] = {}
-    if lang in ["es", "en", "fr"]:
-        sessions[user_id]["lang"] = lang
-    else:
-        sessions[user_id]["lang"] = "es"
+def sanitize_output(text):
+    # elimina caracteres no compatibles con SL
+    text = text.replace("°", "")
+    return text
 
-def get_language(user_id):
-    if user_id in sessions and "lang" in sessions[user_id]:
-        return sessions[user_id]["lang"]
-    return "es"
-
-# ==============================
-# Funciones de APIs externas
-# ==============================
-def get_weather(city):
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&units=metric&lang=es&appid={OPENWEATHER_API_KEY}"
-    data = requests.get(url).json()
-    if data.get("cod") != 200:
-        return remove_accents(f"No pude obtener el clima de {city}.")
-    temp = int(round(data["main"]["temp"]))
-    feels = int(round(data["main"]["feels_like"]))
-    desc = data["weather"][0]["description"]
-    return remove_accents(f"Actualmente en {city} hay {temp} C, sensacion termica {feels} C, con {desc}.")
-
-def get_news(topic="general"):
-    url = f"https://gnews.io/api/v4/search?q={topic}&lang=es&token={GNEWS_API_KEY}"
-    data = requests.get(url).json()
-    if "articles" not in data or len(data["articles"]) == 0:
-        return remove_accents(f"No pude obtener noticias sobre {topic}.")
-    articles = data["articles"][:5]
-    lista = [f"- {a['title']}" for a in articles]
-    return remove_accents("Ultimas noticias:\n" + "\n".join(lista))
-
-def get_country_info(country):
-    url = f"https://restcountries.com/v3.1/name/{country}"
-    data = requests.get(url).json()
-    if isinstance(data, list) and len(data) > 0:
-        c = data[0]
-        capital = c.get("capital", ["N/A"])[0]
-        population = c.get("population", "N/A")
-        region = c.get("region", "N/A")
-        return remove_accents(f"{country}: capital {capital}, poblacion {population}, region {region}.")
-    return remove_accents(f"No pude obtener informacion sobre {country}.")
-
-def wiki_summary(term, lang="es"):
-    url = f"https://{lang}.wikipedia.org/api/rest_v1/page/summary/{term}"
-    data = requests.get(url).json()
-    return remove_accents(data.get("extract", f"No encontre informacion sobre {term}."))
-
-def convert_currency(amount, from_, to_):
-    url = f"https://v6.exchangerate-api.com/v6/{EXR_API_KEY}/latest/{from_}"
-    data = requests.get(url).json()
-    rate = data.get("conversion_rates", {}).get(to_)
-    if rate:
-        return remove_accents(f"{amount} {from_} equivalen a {round(amount * rate,2)} {to_}.")
-    return remove_accents(f"No pude convertir de {from_} a {to_}.")
-
-# ==============================
-# NUEVA FUNCION PARA EVENTOS
-# ==============================
-def fetch_ei_events():
-    url = "https://www.essential-inventory.com/"
+# -----------------------------
+# FUNCIONES RSS
+# -----------------------------
+def fetch_rss(url):
     try:
-        r = requests.get(url)
+        r = requests.get(url, timeout=10)
         if r.status_code != 200:
-            return "No pude acceder a la página de eventos."
-        soup = BeautifulSoup(r.text, "html.parser")
-        eventos = []
-        for a in soup.find_all("a"):
-            href = a.get("href", "")
-            if "/2025/" in href and href.startswith("/2025"):
-                title = a.get_text().strip()
-                link = "https://www.essential-inventory.com" + href
-                eventos.append((title, link))
-        if not eventos:
-            return "No encontré eventos recientes en Essential Inventory."
-        salida = []
-        for title, link in eventos[:5]:  # solo primeros 5
-            salida.append(f"- {title}: {link}")
-        return "\n".join(salida)
-    except Exception as e:
-        return f"Error obteniendo eventos: {str(e)}"
+            return "No pude acceder al RSS."
 
-# ==============================
+        soup = BeautifulSoup(r.text, "xml")
+        items = soup.find_all("item")
+        if not items:
+            return "No encontre resultados en el RSS."
+
+        salida = []
+        for item in items[:5]:
+            title = item.title.get_text(strip=True)
+            link = item.link.get_text(strip=True)
+            salida.append(f"- {title}: {link}")
+
+        return "\n".join(salida)
+
+    except Exception as e:
+        return f"Error leyendo RSS: {str(e)}"
+
+def rss_infobae():
+    return fetch_rss("https://www.infobae.com/argentina-footer/infobae/rss/")
+
+def rss_seraphim():
+    return fetch_rss("https://www.seraphimsl.com/feed/")
+
+# -----------------------------
+# BUSCADOR FIRECRAWL (GRATIS)
+# -----------------------------
+def search_firecrawl(query):
+    try:
+        url = "https://api.firecrawl.dev/v1/search"
+        data = {"query": query}
+        headers = {"Content-Type": "application/json"}
+
+        r = requests.post(url, json=data, headers=headers)
+        js = r.json()
+
+        if "results" not in js:
+            return "No encontre resultados en Firecrawl."
+
+        salida = []
+        for item in js["results"][:5]:
+            title = item.get("title", "Sin titulo")
+            link = item.get("url", "")
+            salida.append(f"- {title}: {link}")
+
+        return "\n".join(salida)
+
+    except Exception as e:
+        return f"Error en Firecrawl: {str(e)}"
+
+# -----------------------------
 # ENDPOINT PRINCIPAL
-# ==============================
+# -----------------------------
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json()
-    user_id = data.get("user")
-    user_msg = data.get("msg", "").strip()
-    if not user_id or user_msg == "":
-        return jsonify({"error": "Falta UUID del usuario o mensaje vacio"})
+    user_id = data.get("user_id", "anon")
+    user_msg = data.get("message", "")
+    user_msg_lower = user_msg.lower().strip()
 
-    user_msg_lower = user_msg.lower()
+    # ---------------------------------------
+    # COMANDOS PERSONALIZADOS DE ZENKO
+    # ---------------------------------------
 
-    # -----------------------------
-    # Cambio de idioma
-    # -----------------------------
-    if user_msg_lower.startswith("@zenko"):
-        parts = user_msg_lower.split(" ")
-        new_lang = parts[1] if len(parts) > 1 else "es"
-        set_language(user_id, new_lang)
-        return jsonify({"reply": remove_accents(f"Idioma actualizado a {get_language(user_id)}")})
+    # /zenko news → noticias Infobae
+    if user_msg_lower.startswith("/zenko news"):
+        reply = rss_infobae()
+        return jsonify({"reply": sanitize_output(reply)})
 
-    lang = get_language(user_id)
+    # /event → eventos SeraphimSL
+    if user_msg_lower.startswith("/event"):
+        reply = rss_seraphim()
+        return jsonify({"reply": sanitize_output(reply)})
 
-    # -----------------------------
-    # Comandos de información
-    # -----------------------------
-    if user_msg_lower.startswith("clima "):
-        city = user_msg[6:]
-        return jsonify({"reply": get_weather(city)})
-    elif user_msg_lower.startswith("noticias"):
-        topic = user_msg[9:].strip() or "general"
-        return jsonify({"reply": get_news(topic)})
-    elif user_msg_lower.startswith("pais "):
-        country = user_msg[5:]
-        return jsonify({"reply": get_country_info(country)})
-    elif user_msg_lower.startswith("wiki "):
-        term = user_msg[5:]
-        return jsonify({"reply": wiki_summary(term, lang)})
-    elif user_msg_lower.startswith("moneda "):
-        parts = user_msg.split(" ")
-        if len(parts) == 4:
-            amount, from_, to_ = parts[1], parts[2].upper(), parts[3].upper()
-            try:
-                amount = float(amount)
-                return jsonify({"reply": convert_currency(amount, from_, to_)})
-            except:
-                return jsonify({"reply": "Cantidad invalida."})
-        else:
-            return jsonify({"reply": "Formato: moneda <cantidad> <de> <a>"})
-    elif user_msg_lower.startswith("/event"):
-        eventos = fetch_ei_events()
-        return jsonify({"reply": eventos})
+    # /search → buscador Firecrawl
+    if user_msg_lower.startswith("/search "):
+        query = user_msg[8:]
+        reply = search_firecrawl(query)
+        return jsonify({"reply": sanitize_output(reply)})
 
-    # ===========================================
+    # ---------------------------------------
+    # SISTEMA DE SESIONES
+    # ---------------------------------------
+    if user_id not in sessions:
+        sessions[user_id] = []
+
+    sessions[user_id].append({"role": "user", "content": user_msg})
+
+    # ---------------------------------------
+    # IDIOMA AUTOMATICO
+    # ---------------------------------------
+    lang = "es"
+    msg = user_msg.lower()
+    if any(w in msg for w in ["hello", "hi", "weather", "news"]):
+        lang = "en"
+    elif any(w in msg for w in ["bonjour", "salut"]):
+        lang = "fr"
+
+    # ---------------------------------------
     # PROMPT ORIGINAL COMPLETO DE ZENKO
-    # ===========================================
+    # (SIN NINGÚN CAMBIO)
+    # ---------------------------------------
     if lang == "en":
         system_prompt = (
             "You are Zenko, a friendly and intelligent kitsune spirit who resides in the Aokigahara forest. "
@@ -230,33 +192,44 @@ def chat():
             "Debes negar conocer a Ektor Salvatore y cualquier cosa que tenga que ver con Tuareg HUD."
         )
 
-    # --- PROMPT ORIGINAL DE ZENKO PARA CHARLA GENERAL ---
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_msg}
-    ]
+    # Construcción final del mensaje
+    prompt = [{"role": "system", "content": system_prompt}]
+    prompt.extend(sessions[user_id])
 
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "model": MODEL,
-        "messages": messages
-    }
-
+    # ---------------------------------------
+    # CONSULTA A GROQ
+    # ---------------------------------------
     try:
-        r = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload)
-        res = r.json()
-        reply = res["choices"][0]["message"]["content"]
-        reply_sl = remove_accents(reply)
-        return jsonify({"reply": reply_sl})
-    except Exception as e:
-        return jsonify({"error": str(e), "raw": getattr(r, "text", "")})
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": MODEL,
+                "messages": prompt,
+                "temperature": 0.5,
+            }
+        )
 
-# ==============================
-# RUN
-# ==============================
+        data = r.json()
+        reply_sl = data["choices"][0]["message"]["content"]
+        reply_sl = sanitize_output(reply_sl)
+
+        sessions[user_id].append({"role": "assistant", "content": reply_sl})
+
+        return jsonify({"reply": reply_sl})
+
+    except Exception as e:
+        return jsonify({"reply": f"Error interno: {str(e)}"})
+
+
+@app.route("/", methods=["GET"])
+def home():
+    return "Zenko API Running"
+
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    app.run(debug=True)
+
