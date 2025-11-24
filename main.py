@@ -6,7 +6,7 @@ import unicodedata
 app = Flask(__name__)
 
 # Keys de APIs
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "sk-493084a27e8341b980d499dca0d27cb6")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 MODEL = "llama-3.1-8b-instant"
 
@@ -195,4 +195,5 @@ def chat():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
