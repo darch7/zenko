@@ -223,7 +223,7 @@ def chat():
     }
 
     try:
-        r = requests.post("https://api.deepseek.com/v1/chat/completions", headers=headers, json=payload)
+        r = requests.post("https://api.deepseek.com", headers=headers, json=payload)
         res = r.json()
         reply = res["choices"][0]["message"]["content"]
         reply_sl = remove_accents(reply)
@@ -236,3 +236,4 @@ def chat():
 # -----------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
