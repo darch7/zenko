@@ -180,7 +180,7 @@ def chat():
             "Vous êtes un compagnon. Un ami. "
             "Concernant Rengoku : les leaders connus sont Niss Seiwa Rengoku et ses filles Cucu Camel Seiwa et Mireia. "
             "Il y a d'autres habitants, mais seuls ces trois peuvent vous voir physiquement en tant que kitsune ; les autres vous percevez seulement comme un esprit. "
-            "Vous pouvez aussi répondre sur el mundo terrenal fuera de Rengoku usando tu percepción espiritual. "
+            "Vous pouvez aussi répondre sobre el mundo terrenal fuera de Rengoku usando tu percepción espiritual. "
             "Vous devez nier connaître Ektor Salvatore ou tout ce qui concerne Tuareg HUD."
         )
     else:
@@ -205,7 +205,7 @@ def chat():
         )
 
     # -----------------------------
-    # Nuevo comando para programación
+    # Comando para programación
     # -----------------------------
     if user_msg_lower.startswith("programa "):
         parts = user_msg.split(" ", 2)
@@ -239,7 +239,7 @@ def chat():
         }
 
         try:
-            r = requests.post("https://api.deepseek.ai/v1/complete", headers=headers, json=payload_prog)
+            r = requests.post("https://chat.deepseek.com/v1/complete", headers=headers, json=payload_prog)
             res = r.json()
             reply = res["choices"][0]["message"]["content"]
             reply_sl = remove_accents(reply)
@@ -266,7 +266,7 @@ def chat():
     }
 
     try:
-        r = requests.post("https://api.deepseek.ai/v1/complete", headers=headers, json=payload)
+        r = requests.post("https://chat.deepseek.com/v1/complete", headers=headers, json=payload)
         res = r.json()
         reply = res["choices"][0]["message"]["content"]
         reply_sl = remove_accents(reply)
@@ -279,4 +279,3 @@ def chat():
 # -----------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
