@@ -205,49 +205,6 @@ def chat():
         )
 
     # -----------------------------
-    # Comando para programación
-    # -----------------------------
-    if user_msg_lower.startswith("programa "):
-        parts = user_msg.split(" ", 2)
-        if len(parts) < 3:
-            return jsonify({"reply": "Formato: programa <lenguaje> <tarea o problema a resolver>"})
-        lenguaje = parts[1].lower()
-        tarea = parts[2]
-        prog_prompt = (
-            f"{system_prompt}\n"
-            f"Ahora debes actuar como un tutor de programación. "
-            f"Explica y genera código en {lenguaje.upper()} según la siguiente tarea: {tarea}. "
-            f"Da el código con explicaciones claras y breves, en bloques legibles. "
-            f"Si es LSL, respeta la sintaxis y estructura de Second Life. "
-            f"Si es CSS, JS o PHP, asegúrate de que sea funcional y fácil de entender. "
-            f"Siempre responde en el idioma configurado ({lang})."
-        )
-
-        messages_prog = [
-            {"role": "system", "content": prog_prompt},
-            {"role": "user", "content": user_msg}
-        ]
-
-        payload_prog = {
-            "model": "deepseek",
-            "messages": messages_prog
-        }
-
-        headers = {
-            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-            "Content-Type": "application/json"
-        }
-
-        try:
-            r = requests.post("https://chat.deepseek.com/v1/complete", headers=headers, json=payload_prog)
-            res = r.json()
-            reply = res["choices"][0]["message"]["content"]
-            reply_sl = remove_accents(reply)
-            return jsonify({"reply": reply_sl})
-        except Exception as e:
-            return jsonify({"error": f"Zenko Kitsune: Error en la IA: {str(e)}"})
-
-    # -----------------------------
     # Prompt general Zenko usando DeepSeek
     # -----------------------------
     messages = [
@@ -266,7 +223,7 @@ def chat():
     }
 
     try:
-        r = requests.post("https://chat.deepseek.com/v1/complete", headers=headers, json=payload)
+        r = requests.post("https://api.deepseek.com/v1/chat/completions", headers=headers, json=payload)
         res = r.json()
         reply = res["choices"][0]["message"]["content"]
         reply_sl = remove_accents(reply)
