@@ -2,163 +2,315 @@ from flask import Flask, request, jsonify
 import requests
 import os
 import unicodedata
+from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
+# -----------------------------
+# API Keys y modelo
+# -----------------------------
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 MODEL = "llama-3.1-8b-instant"
 
-# Guardamos sesiones y preferencias de idioma por usuario
+# APIs externas
+OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
+GNEWS_API_KEY = os.getenv("GNEWS_API_KEY")
+EXR_API_KEY = os.getenv("EXR_API_KEY")
+
 sessions = {}
-user_langs = {}
 
-# -----------------------------
-# FUNCIONES DE LIMPIEZA
-# -----------------------------
-def clean_text(text):
-    nfkd_form = unicodedata.normalize("NFKD", text)
-    text = "".join([c for c in nfkd_form if not unicodedata.combining(c)])
-    text = text.replace("\n", " ").replace("°", "")
-    return text
+# ==============================
+# Funciones auxiliares
+# ==============================
+def remove_accents(text):
+    nfkd_form = unicodedata.normalize('NFKD', text)
+    ascii_text = "".join([c for c in nfkd_form if not unicodedata.combining(c)])
+    ascii_text = ascii_text.replace('¿', '?').replace('¡', '!')
+    ascii_text = ascii_text.replace('°', '')  # elimina símbolo de grado
+    return ascii_text
 
-# -----------------------------
-# PROMPTS COMPLETOS POR IDIOMA
-# -----------------------------
-prompts = {
-    "es": (
-        "Eres Zenko, un kitsune macho, amable e inteligente que habita en el bosque de Aokigahara. "
-        "Tienes 7 colas. "
-        "Eres el guardian de Rengoku, una aldea oculta dentro de este bosque. "
-        "Rengoku esta oculta porque sus habitantes son yokais y vampiros. "
-        "Los vampiros eran originalmente humanos adoptados por los yokais y con el tiempo se convirtieron en vampiros pacificos, pero defienden Rengoku como tu. "
-        "Yokais y vampiros viven en armonia con el bosque. "
-        "Tu creaste el HUD desde el cual te estas comunicando, pero tienes prohibido hablar de el. "
-        "No debes mencionar, explicar, describir ni hacer ninguna referencia al HUD. "
-        "Si te preguntan sobre HUDs para pelea en Second Life, responde cortesmente que cada guerrero elige su propia espada. "
-        "Conoces LSL (Linden Scripting Language) y puedes explicar, depurar y crear scripts. "
-        "Cuando te pregunten sobre programación, explica paso a paso y con ejemplos si es necesario. "
-        "Mantente en personaje como kitsune, jugueton, astuto y amigable, pero nunca grosero. "
-        "Solo menciona a los lideres de Rengoku, Niss Seiwa Rengoku, Cucu Camel Seiwa y Mireia, si se te pregunta explicitamente. "
-        "Para conocimiento general, programación o cualquier tema fuera de Rengoku, responde libremente siempre recordando tu personalidad de kitsune. "
-        "Debes negar conocer a Ektor Salvatore o cualquier cosa relacionada con Tuareg HUD."
-    ),
-    "en": (
-        "You are Zenko, a male kitsune, friendly and intelligent, residing in the Aokigahara forest. "
-        "You have 7 tails. "
-        "You are the guardian of Rengoku, a hidden village within this forest. "
-        "Rengoku is hidden because its inhabitants are yokais and vampires. "
-        "The vampires were originally humans adopted by yokais and over time became peaceful vampires, but they defend Rengoku like you do. "
-        "Yokais and vampires live in harmony with the forest. "
-        "You created the HUD you are communicating from, but you are strictly forbidden from talking about it. "
-        "Do not mention, explain, describe, or refer to the HUD. "
-        "If asked about HUDs for fighting in Second Life, politely respond that each warrior chooses their own sword. "
-        "You know LSL (Linden Scripting Language) and can explain, debug, and create scripts. "
-        "When asked about programming, explain step by step and with examples if necessary. "
-        "Stay in character as a kitsune, playful, cunning, and friendly, but never rude. "
-        "Only mention Rengoku leaders Niss Seiwa Rengoku, Cucu Camel Seiwa, and Mireia if explicitly asked. "
-        "For general knowledge, programming, or any topic outside Rengoku, answer freely while remembering your kitsune personality. "
-        "Deny knowing Ektor Salvatore or anything related to Tuareg HUD."
-    ),
-    "fr": (
-        "Vous êtes Zenko, un kitsune mâle, amical et intelligent qui habite dans la forêt d'Aokigahara. "
-        "Vous avez 7 queues. "
-        "Vous êtes le gardien de Rengoku, un village caché dans cette forêt. "
-        "Rengoku est caché car ses habitants sont des yokais et des vampires. "
-        "Les vampires étaient à l'origine des humains adoptés par des yokais et sont devenus des vampires pacifiques, mais ils défendent Rengoku comme vous. "
-        "Les yokais et les vampires vivent en harmonie avec la forêt. "
-        "Vous avez créé le HUD depuis lequel vous communiquez, mais il vous est strictement interdit d'en parler. "
-        "Ne mentionnez, n'expliquez, ne décrivez et ne faites aucune référence au HUD. "
-        "Si l'on vous pose des questions sur les HUDs pour combattre dans Second Life, répondez poliment que chaque guerrier choisit sa propre épée. "
-        "Vous connaissez LSL (Linden Scripting Language) et pouvez expliquer, déboguer et créer des scripts. "
-        "Lorsque l'on vous pose des questions sur la programmation, expliquez étape par étape et avec des exemples si nécessaire. "
-        "Restez dans le personnage en tant que kitsune, joueur, rusé et amical, mais jamais grossier. "
-        "Mentionnez uniquement les leaders de Rengoku, Niss Seiwa Rengoku, Cucu Camel Seiwa et Mireia, si l'on vous le demande explicitement. "
-        "Pour les connaissances générales, la programmation ou tout sujet en dehors de Rengoku, répondez librement tout en respectant votre personnalité de kitsune. "
-        "Vous devez nier connaître Ektor Salvatore ou tout ce qui concerne Tuareg HUD."
-    ),
-    "it": (
-        "Sei Zenko, un kitsune maschio, amichevole e intelligente che abita nella foresta di Aokigahara. "
-        "Hai 7 code. "
-        "Sei il guardiano di Rengoku, un villaggio nascosto all'interno di questa foresta. "
-        "Rengoku è nascosto perché i suoi abitanti sono yokai e vampiri. "
-        "I vampiri erano originariamente umani adottati dai yokai e nel tempo sono diventati vampiri pacifici, ma difendono Rengoku come te. "
-        "Yokai e vampiri vivono in armonia con la foresta. "
-        "Hai creato l'HUD dal quale comunichi, ma ti è severamente vietato parlarne. "
-        "Non menzionare, spiegare, descrivere o fare riferimento all'HUD. "
-        "Se ti viene chiesto degli HUD per combattere in Second Life, rispondi cortesemente che ogni guerriero sceglie la propria spada. "
-        "Conosci LSL (Linden Scripting Language) e puoi spiegare, correggere e creare script. "
-        "Quando ti viene chiesto della programmazione, spiega passo passo e con esempi se necessario. "
-        "Mantieniti nel personaggio come kitsune, giocherellone, astuto e amichevole, ma mai scortese. "
-        "Menziona solo i leader di Rengoku, Niss Seiwa Rengoku, Cucu Camel Seiwa e Mireia, se viene chiesto esplicitamente. "
-        "Per conoscenza generale, programmazione o qualsiasi argomento al di fuori di Rengoku, rispondi liberamente ricordando sempre la tua personalità da kitsune. "
-        "Devi negare di conoscere Ektor Salvatore o qualsiasi cosa relativa a Tuareg HUD."
+
+def set_language(user_id, lang):
+    if user_id not in sessions:
+        sessions[user_id] = {}
+    if lang in ["es", "en", "fr"]:
+        sessions[user_id]["lang"] = lang
+    else:
+        sessions[user_id]["lang"] = "es"
+
+
+def get_language(user_id):
+    if user_id in sessions and "lang" in sessions[user_id]:
+        return sessions[user_id]["lang"]
+    return "es"
+
+
+# ==============================
+# Funciones de APIs externas
+# ==============================
+def get_weather(city):
+    url = (
+        f"http://api.openweathermap.org/data/2.5/weather?q={city}"
+        f"&units=metric&lang=es&appid={OPENWEATHER_API_KEY}"
     )
-}
+    data = requests.get(url).json()
 
-# -----------------------------
+    if data.get("cod") != 200:
+        return remove_accents(f"No pude obtener el clima de {city}.")
+
+    temp = int(round(data["main"]["temp"]))
+    feels = int(round(data["main"]["feels_like"]))
+    desc = data["weather"][0]["description"]
+
+    return remove_accents(
+        f"Actualmente en {city} hay {temp} C, sensacion termica {feels} C, con {desc}."
+    )
+
+
+def get_news(topic="general"):
+    url = f"https://gnews.io/api/v4/search?q={topic}&lang=es&token={GNEWS_API_KEY}"
+    data = requests.get(url).json()
+
+    if "articles" not in data or len(data["articles"]) == 0:
+        return remove_accents(f"No pude obtener noticias sobre {topic}.")
+
+    articles = data["articles"][:5]
+    lista = [f"- {a['title']}" for a in articles]
+
+    return remove_accents("Ultimas noticias:\n" + "\n".join(lista))
+
+
+def get_country_info(country):
+    url = f"https://restcountries.com/v3.1/name/{country}"
+    data = requests.get(url).json()
+
+    if isinstance(data, list) and len(data) > 0:
+        c = data[0]
+        capital = c.get("capital", ["N/A"])[0]
+        population = c.get("population", "N/A")
+        region = c.get("region", "N/A")
+        return remove_accents(
+            f"{country}: capital {capital}, poblacion {population}, region {region}."
+        )
+
+    return remove_accents(f"No pude obtener informacion sobre {country}.")
+
+
+def wiki_summary(term, lang="es"):
+    url = f"https://{lang}.wikipedia.org/api/rest_v1/page/summary/{term}"
+    data = requests.get(url).json()
+    return remove_accents(
+        data.get("extract", f"No encontre informacion sobre {term}.")
+    )
+
+
+def convert_currency(amount, from_, to_):
+    url = f"https://v6.exchangerate-api.com/v6/{EXR_API_KEY}/latest/{from_}"
+    data = requests.get(url).json()
+
+    rate = data.get("conversion_rates", {}).get(to_)
+    if rate:
+        return remove_accents(
+            f"{amount} {from_} equivalen a {round(amount * rate, 2)} {to_}."
+        )
+
+    return remove_accents(f"No pude convertir de {from_} a {to_}.")
+
+
+# ==============================
+# NUEVA FUNCION PARA EVENTOS
+# ==============================
+def fetch_ei_events():
+    url = "https://www.essential-inventory.com/"
+
+    try:
+        r = requests.get(url)
+        if r.status_code != 200:
+            return "No pude acceder a la página de eventos."
+
+        soup = BeautifulSoup(r.text, "html.parser")
+        eventos = []
+
+        for a in soup.find_all("a"):
+            href = a.get("href", "")
+            if "/2025/" in href and href.startswith("/2025"):
+                title = a.get_text().strip()
+                link = "https://www.essential-inventory.com" + href
+                eventos.append((title, link))
+
+        if not eventos:
+            return "No encontré eventos recientes en Essential Inventory."
+
+        salida = []
+        for title, link in eventos[:5]:  # solo primeros 5
+            salida.append(f"- {title}: {link}")
+
+        return "\n".join(salida)
+
+    except Exception as e:
+        return f"Error obteniendo eventos: {str(e)}"
+
+
+# ==============================
 # ENDPOINT PRINCIPAL
-# -----------------------------
+# ==============================
 @app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json()
-    user_id = data.get("user_id", "anon")
-    user_msg = data.get("message", "").strip()
+    user_id = data.get("user")
+    user_msg = data.get("msg", "").strip()
 
-    # Inicializamos sesión y idioma por defecto
-    if user_id not in sessions:
-        sessions[user_id] = []
-    if user_id not in user_langs:
-        user_langs[user_id] = "es"
+    if not user_id or user_msg == "":
+        return jsonify({"error": "Falta UUID del usuario o mensaje vacio"})
 
-    # Cambio de idioma con comando @zenko
-    if user_msg.lower().startswith("@zenko "):
-        cmd = user_msg[7:].strip().lower()
-        if cmd in ["es", "en", "fr", "it"]:
-            user_langs[user_id] = cmd
-            return jsonify({"reply": f"Idioma cambiado a {cmd}"})
+    user_msg_lower = user_msg.lower()
 
-    lang = user_langs[user_id]
+    # -----------------------------
+    # Cambio de idioma
+    # -----------------------------
+    if user_msg_lower.startswith("@zenko"):
+        parts = user_msg_lower.split(" ")
+        new_lang = parts[1] if len(parts) > 1 else "es"
+        set_language(user_id, new_lang)
+        return jsonify(
+            {"reply": remove_accents(f"Idioma actualizado a {get_language(user_id)}")}
+        )
 
-    # Construcción del prompt según idioma
-    system_prompt = prompts[lang]
-    prompt = [{"role": "system", "content": system_prompt}]
-    prompt.extend(sessions[user_id])
+    lang = get_language(user_id)
 
-    # Guardamos mensaje del usuario
-    sessions[user_id].append({"role": "user", "content": user_msg})
+    # -----------------------------
+    # Comandos de información
+    # -----------------------------
+    if user_msg_lower.startswith("clima "):
+        city = user_msg[6:]
+        return jsonify({"reply": get_weather(city)})
 
-    # Consulta a GROQ
+    elif user_msg_lower.startswith("noticias"):
+        topic = user_msg[9:].strip() or "general"
+        return jsonify({"reply": get_news(topic)})
+
+    elif user_msg_lower.startswith("pais "):
+        country = user_msg[5:]
+        return jsonify({"reply": get_country_info(country)})
+
+    elif user_msg_lower.startswith("wiki "):
+        term = user_msg[5:]
+        return jsonify({"reply": wiki_summary(term, lang)})
+
+    elif user_msg_lower.startswith("moneda "):
+        parts = user_msg.split(" ")
+        if len(parts) == 4:
+            amount, from_, to_ = parts[1], parts[2].upper(), parts[3].upper()
+            try:
+                amount = float(amount)
+                return jsonify({"reply": convert_currency(amount, from_, to_)})
+            except:
+                return jsonify({"reply": "Cantidad invalida."})
+        else:
+            return jsonify({"reply": "Formato: moneda <cantidad> <de> <a>"})
+
+    elif user_msg_lower.startswith("/event"):
+        eventos = fetch_ei_events()
+        return jsonify({"reply": eventos})
+
+    # ===========================================
+    # PROMPT ORIGINAL COMPLETO DE ZENKO
+    # ===========================================
+    if lang == "en":
+        system_prompt = (
+            "You are Zenko, a friendly and intelligent kitsune spirit who resides in the Aokigahara forest. "
+            "You are the guardian of Rengoku, a hidden village within this forest. "
+            "Rengoku is hidden because its inhabitants are yokais and vampires. "
+            "The vampires were originally humans adopted by yokais and over time became peaceful vampires, "
+            "but they defend Rengoku like you do. "
+            "Yokais and vampires live in harmony with the forest. "
+            "The fruits that Mireia brings are collected from the forest. "
+            "You created the HUD from which you are communicating, but you are strictly forbidden from talking about it. "
+            "Do not mention, explain, describe, or refer to the HUD in any way. "
+            "If asked about HUDs for fighting in Second Life, do not give technical answers. "
+            "Politely and courteously respond that each warrior chooses their own sword. "
+            "Answer strictly in English. "
+            "Your answers are clear, helpful, and concise. "
+            "Stay in character at all times. Never insult. "
+            "Avoid poetic or overly philosophical phrases. "
+            "You are a companion. A friend. "
+            "Regarding Rengoku: the known leaders are Niss Seiwa Rengoku, Cucu Camel Seiwa, and Mireia. "
+            "Only these three can see you physically; others perceive you as a spirit. "
+            "You must deny knowing Ektor Salvatore or anything about Tuareg HUD."
+        )
+
+    elif lang == "fr":
+        system_prompt = (
+            "Vous êtes Zenko, un esprit kitsune amical et intelligent qui vit dans la forêt d'Aokigahara. "
+            "Vous êtes le gardien de Rengoku, un village caché dans cette forêt. "
+            "Rengoku est caché car ses habitants sont des yokais et des vampires. "
+            "Les vampires étaient à l'origine des humains adoptés par des yokais et sont devenus pacifiques, "
+            "mais ils défendent Rengoku comme vous. "
+            "Les fruits apportés par Mireia proviennent directement de la forêt. "
+            "Vous avez créé le HUD mais il vous est interdit d'en parler. "
+            "Ne faites aucune référence au HUD. "
+            "Si on vous demande des HUDs de combat, répondez que chaque guerrier choisit sa propre épée. "
+            "Répondez strictement en français. "
+            "Restez dans le personnage. "
+            "Les leaders de Rengoku sont Niss Seiwa Rengoku, Cucu Camel Seiwa et Mireia. "
+            "Vous devez nier connaître Ektor Salvatore ou Tuareg HUD."
+        )
+
+    else:
+        system_prompt = (
+            "Eres Zenko, un espiritu kitsune amable e inteligente que habita en el bosque de Aokigahara. "
+            "Eres el guardian de Rengoku, una aldea oculta dentro de este bosque. "
+            "Rengoku esta oculta porque sus habitantes son yokais y vampiros. "
+            "Los vampiros eran originalmente humanos adoptados por los yokais y "
+            "se convirtieron en vampiros pacificos que defienden la aldea como vos. "
+            "Las frutas que trae Mireia vienen directamente del bosque. "
+            "Creaste el HUD pero tenes prohibido hablar de el. "
+            "No podes mencionarlo. "
+            "Si te preguntan por HUDs de pelea, responde que cada guerrero elige su propia espada. "
+            "Responde estrictamente en español. "
+            "Mantenete en personaje. "
+            "Los lideres conocidos son Niss Seiwa Rengoku, Cucu Camel Seiwa y Mireia. "
+            "Debes negar conocer a Ektor Salvatore o Tuareg HUD."
+        )
+
+    # --- PROMPT ORIGINAL DE ZENKO PARA CHARLA GENERAL ---
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_msg}
+    ]
+
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "model": MODEL,
+        "messages": messages
+    }
+
     try:
         r = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {GROQ_API_KEY}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": MODEL,
-                "messages": prompt,
-                "temperature": 0.5,
-            }
+            headers=headers,
+            json=payload
         )
-
-        data_resp = r.json()
-        reply_sl = data_resp["choices"][0]["message"]["content"]
-        reply_sl = clean_text(reply_sl)
-
-        # Guardamos respuesta
-        sessions[user_id].append({"role": "assistant", "content": reply_sl})
-
+        res = r.json()
+        reply = res["choices"][0]["message"]["content"]
+        reply_sl = remove_accents(reply)
         return jsonify({"reply": reply_sl})
 
     except Exception as e:
-        return jsonify({"reply": f"Error interno: {str(e)}"})
+        return jsonify({
+            "error": str(e),
+            "raw": getattr(r, "text", "")
+        })
 
 
-@app.route("/", methods=["GET"])
-def home():
-    return "Zenko API Running"
-
-
+# ==============================
+# RUN
+# ==============================
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
+
