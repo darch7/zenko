@@ -24,7 +24,7 @@ def clean_text(text):
     return text.replace("\n", " ")
 
 # --------------------------------------------------------
-# PROMPTS POR IDIOMA (DIRECTO Y CONCRETO)
+# PROMPTS POR IDIOMA
 # --------------------------------------------------------
 PROMPT_BASE = """
 Eres Zenko, un espiritu kitsune amable, jugueton y astuto que habita en el bosque de Aokigahara. 
@@ -197,26 +197,11 @@ def chat():
             "📰 Leer RSS de noticias y eventos",
             "🌤 Clima real por ciudad usando OpenWeatherMap",
             "🌐 Responder preguntas generales de forma directa y clara",
+            "🌐 Búsqueda web con DeepSeek y Firecrawl",
+            "📚 Wikipedia / definiciones rápidas",
             "🦊 Mantener modo LSL siempre con debug activado"
         ]
         return jsonify({"reply": "Estas son las funciones que puedo hacer:\n" + "\n".join(funciones)})
-
-    # ---------------- GUARDADO DE SCRIPTS ----------------
-    if sessions[user]["lsl_mode"]:
-        if "guardar script" in m:
-            sid = guardar_script(user, msg)
-            return jsonify({"reply": f"Script guardado con ID {sid}"})
-
-        if "listar scripts" in m:
-            lista = sessions[user]["scripts"].keys()
-            if not lista:
-                return jsonify({"reply": "No tienes scripts guardados."})
-            return jsonify({"reply": "Scripts guardados:\n" + "\n".join(lista)})
-
-        if "ver script" in m:
-            for sid in sessions[user]["scripts"]:
-                if sid in m:
-                    return jsonify({"reply": clean_text(sessions[user]["scripts"][sid])})
 
     # ---------------- MEMORIA / RECORDATORIOS ----------------
     if "@zenko recuerda" in m:
@@ -268,9 +253,61 @@ def chat():
         else:
             return jsonify({"reply": "Indica la ciudad: zenko clima <ciudad>"})
 
+    # ---------------- BÚSQUEDA WEB CON FALLBACK ----------------
+    if m.startswith("@zenko busca"):
+        termino = msg.split("busca",1)[1].strip()
+        if not termino:
+            return jsonify({"reply": "Indica qué deseas buscar: @zenko busca <término>"})
+        
+        resultados = []
+
+        # Intentar con DeepSeek
+        try:
+            url_ds = f"https://api.deepseek.com/search?q={termino}&format=json"
+            r = requests.get(url_ds, timeout=5)
+            data = r.json()
+            if "results" in data and data["results"]:
+                resultados = data["results"][:5]
+                resultados = [f"- {res['title']}: {res['url']}" for res in resultados]
+        except:
+            pass
+
+        # Si no hay resultados, intentar con Firecrawl
+        if not resultados:
+            try:
+                url_fc = f"https://api.firecrawl.com/search?q={termino}&format=json"
+                r = requests.get(url_fc, timeout=5)
+                data = r.json()
+                if "results" in data and data["results"]:
+                    resultados = data["results"][:5]
+                    resultados = [f"- {res['title']}: {res['url']}" for res in resultados]
+            except:
+                pass
+
+        if resultados:
+            return jsonify({"reply": "Resultados de búsqueda:\n" + "\n".join(resultados)})
+        else:
+            return jsonify({"reply": "No encontré resultados en DeepSeek ni en Firecrawl."})
+
+    # ---------------- WIKIPEDIA / DEFINICIONES ----------------
+    if m.startswith("@zenko define") or m.startswith("@zenko wikipedia"):
+        termino = msg.split("define",1)[-1].strip() if "define" in m else msg.split("wikipedia",1)[-1].strip()
+        if not termino:
+            return jsonify({"reply": "Indica el término: @zenko define <término>"})
+        
+        try:
+            url = f"https://es.wikipedia.org/api/rest_v1/page/summary/{termino.replace(' ', '_')}"
+            r = requests.get(url, timeout=5)
+            data = r.json()
+            if "extract" in data:
+                return jsonify({"reply": data["extract"]})
+            else:
+                return jsonify({"reply": "No encontré información en Wikipedia."})
+        except Exception as e:
+            return jsonify({"reply": f"Error consultando Wikipedia: {str(e)}"})
+
     # ---------------- MODO LSL ----------------
     if sessions[user]["lsl_mode"] and parece_lsl(msg):
-        # SCRIPT INCOMPLETO
         if script_incompleto(msg):
             prompt = PROMPTS[sessions[user]["lang"]] + """
 [MODO LSL - DETECCION DE SCRIPT INCOMPLETO]
@@ -280,7 +317,6 @@ No reescribas el script completo.
 No hagas roleplay.
 Debug siempre activo.
 """
-        # ANALISIS DE PERFORMANCE
         elif contiene_riesgos_lsl(msg):
             prompt = PROMPTS[sessions[user]["lang"]] + """
 [MODO LSL - ANALISIS DE PERFORMANCE]
@@ -296,7 +332,6 @@ No reescribas codigo salvo ejemplo puntual.
 No hagas roleplay.
 Debug siempre activo.
 """
-        # COMPARADOR DE SCRIPTS
         elif "compara" in m and "---" in msg:
             prompt = PROMPTS[sessions[user]["lang"]] + """
 [MODO LSL - COMPARADOR DE SCRIPTS]
@@ -306,7 +341,6 @@ No repitas codigo completo.
 No hagas roleplay.
 Debug siempre activo.
 """
-        # OPTIMIZACION PARA REGIONES LAGGY
         elif "laggy" in m or "region lenta" in m or "optimiza" in m:
             prompt = PROMPTS[sessions[user]["lang"]] + """
 [MODO LSL - OPTIMIZACION PARA REGION LAGGY]
@@ -325,7 +359,6 @@ Explica brevemente las decisiones.
 No hagas roleplay.
 Debug siempre activo.
 """
-        # REESCRITURA AUTOMATICA
         else:
             prompt = PROMPTS[sessions[user]["lang"]] + """
 [MODO LSL - REESCRITURA AUTOMATICA]
