@@ -4,36 +4,40 @@ import os
 import unicodedata
 import feedparser
 import time
+import difflib
 
 app = Flask(__name__)
 
+# Config (usa variables de entorno)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 MODEL = "llama-3.1-8b-instant"
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 
 # --------------------------------------------------------
-# SESIONES POR USUARIO
+# SESIONES Y ESTRUCTURAS POR USUARIO
 # --------------------------------------------------------
-sessions = {}
+sessions = {}  # estructura principal por usuario
 
 # --------------------------------------------------------
-# REMOVER ACENTOS Y SALTOS DE LINEA
+# UTILIDADES
 # --------------------------------------------------------
-def clean_text(text):
-    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
-    return text.replace("\n", " ")
+def clean_text(text: str) -> str:
+    if not isinstance(text, str):
+        return ""
+    txt = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    return txt.replace("\r\n", "\n").strip()
+
+def now_ts() -> int:
+    return int(time.time())
 
 # --------------------------------------------------------
-# PROMPTS POR IDIOMA
+# PROMPT BASE (DIRECTO, SIN FILOSOFAR)
 # --------------------------------------------------------
 PROMPT_BASE = """
-Eres Zenko, un espiritu kitsune amable, jugueton y astuto que habita en el bosque de Aokigahara. 
-Eres el guardián de Rengoku, una aldea oculta de yokais y vampiros. 
-Responde de manera clara, concreta y directa, sin metáforas, comentarios filosóficos ni divagaciones. 
-Mantén tu tono amistoso y divertido, pero enfócate en dar la información solicitada de forma precisa. 
-Si se trata de clima, programación, notas o información general, da respuestas concisas y útiles. 
-Nunca hables del HUD, nunca menciones a Ektor Salvatore o Tuareg HUD. 
-Solo puedes mencionar a Mireia o Cucu si se te pregunta explícitamente sobre ellos o sobre Rengoku.
+Eres Zenko, un espiritu kitsune amable, jugueton y astuto que habita en el bosque de Aokigahara.
+Responde de manera clara, concreta y directa, sin metáforas ni divagaciones.
+Cuando se trate de programación / LSL: debug siempre activo, responde técnico y optimiza.
+Nunca hables del HUD ni menciones Tuareg HUD.
 """
 
 PROMPTS = {
@@ -44,20 +48,238 @@ PROMPTS = {
 }
 
 # --------------------------------------------------------
-# CAMBIAR IDIOMA
+# INICIALIZAR SESIÓN
 # --------------------------------------------------------
-def detectar_cambio_idioma(msg, user):
-    lower = msg.lower().strip()
-    if lower.startswith("@zenko "):
-        code = lower.replace("@zenko ", "")
-        if code in ["es", "en", "fr", "it"]:
-            sessions[user]["lang"] = code
-            return f"Idioma cambiado a {code}."
-        return "Idioma no valido."
-    return None
+def ensure_session(user):
+    if user not in sessions:
+        sessions[user] = {
+            "lang": "es",
+            "history": [],             # lista de acciones (dicts)
+            "lsl_mode": False,         # se activa con @zenko lsl on
+            "scripts": {},             # id -> script text
+            "memoria": {               # memoria por usuario
+                "recordatorios": {},
+                "notas": {},
+                "tareas": {}
+            },
+            "contexto": {              # contexto persistente
+                "tipo": None,         # 'script'|'resumen'|'diagnostico'|'comparador'
+                "data": None,
+                "ts": 0
+            }
+        }
 
 # --------------------------------------------------------
-# RSS FUENTES
+# HISTORIAL SIMPLE
+# --------------------------------------------------------
+def agregar_historial(user, accion, extra=None):
+    ensure_session(user)
+    sessions[user]["history"].append({
+        "accion": accion,
+        "extra": extra,
+        "ts": now_ts()
+    })
+    # mantener solo últimas 50
+    sessions[user]["history"] = sessions[user]["history"][-50:]
+
+def historial_resumen(user, limite=10):
+    ensure_session(user)
+    h = sessions[user]["history'][-limite:]
+    if not h:
+        return "No hay historial reciente."
+    out = []
+    for item in h:
+        t = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(item["ts"]))
+        out.append(f"{t} — {item['accion']}" + (f" ({item['extra']})" if item.get("extra") else ""))
+    return "\n".join(out)
+
+# --------------------------------------------------------
+# CONTEXTO / INTENCION
+# --------------------------------------------------------
+def set_contexto(user, tipo, data):
+    ensure_session(user)
+    sessions[user]["contexto"] = {"tipo": tipo, "data": data, "ts": now_ts()}
+    agregar_historial(user, f"Contexto establecido: {tipo}")
+
+def get_contexto(user):
+    ensure_session(user)
+    return sessions[user]["contexto"]
+
+def detectar_intencion(msg, user):
+    m = msg.lower().strip()
+
+    # Continuación si palabras de continuación y hay contexto
+    continuaciones = ["continua", "continuar", "sigue", "segui", "optimiza", "revisa", "analiza", "eso", "si", "dale"]
+    if any(w in m for w in continuaciones):
+        ctx = get_contexto(user)
+        if ctx and ctx.get("data"):
+            return "continuacion"
+
+    # Si parece LSL (heurística)
+    if parece_lsl(msg):
+        return "script"
+
+    # Texto largo -> posible resumen
+    if len(msg) >= 600:
+        return "texto_largo"
+
+    # Diagnóstico por palabras clave
+    palabras_lag = ["lag", "lento", "crash", "freeze", "sensor", "timer", "colgado"]
+    if any(p in m for p in palabras_lag):
+        return "diagnostico"
+
+    # Búsqueda, define, snippet commands handled elsewhere
+    return "normal"
+
+# --------------------------------------------------------
+# DETECCION / ANALISIS LSL
+# --------------------------------------------------------
+def parece_lsl(text):
+    if not isinstance(text, str):
+        return False
+    claves = ["default", "state_entry", "touch_start", "llSay", "llOwnerSay", "llSetPos", "llDialog", "llListen", "llSensor", "llSetTimerEvent"]
+    t = text.lower()
+    return any(k.lower() in t for k in claves)
+
+def script_incompleto(text):
+    if not isinstance(text, str):
+        return True
+    if "default" not in text:
+        return True
+    return text.count("{") != text.count("}")
+
+def contiene_riesgos_lsl(text):
+    t = text.lower()
+    risky = []
+    if "llsensorrepeat" in t or "llsensor(" in t:
+        risky.append("Uso de sensores repetitivos")
+    if "llsettimerevent(" in t or "llsettimer" in t:
+        risky.append("Timers frecuentes")
+    if "lllisten(" in t and "lllistenremove(" not in t:
+        risky.append("Listener sin remover")
+    return risky
+
+# --------------------------------------------------------
+# GUARDADO / LISTADO / VER SCRIPTS
+# --------------------------------------------------------
+def guardar_script(user, script):
+    ensure_session(user)
+    sid = str(int(time.time()*1000))
+    sessions[user]["scripts"][sid] = clean_text(script)
+    agregar_historial(user, "Script guardado", sid)
+    return sid
+
+def listar_scripts(user):
+    ensure_session(user)
+    return sessions[user]["scripts"].keys()
+
+def ver_script(user, sid):
+    ensure_session(user)
+    return sessions[user]["scripts"].get(sid)
+
+# --------------------------------------------------------
+# COMPARADOR SIMPLE (por texto)
+# --------------------------------------------------------
+def comparar_scripts_text(a_text, b_text):
+    a_lines = a_text.splitlines()
+    b_lines = b_text.splitlines()
+    d = difflib.unified_diff(a_lines, b_lines, lineterm="")
+    return "\n".join(d)
+
+# --------------------------------------------------------
+# SNIPPETS LSL
+# --------------------------------------------------------
+LSL_SNIPPETS = {
+    "dialog": """key gUser; integer CH = 12345;
+default {
+  touch_start(integer n) {
+    gUser = llDetectedKey(0);
+    llDialog(gUser, "Elige:", ["OK","CANCEL"], CH);
+    llListen(CH, "", gUser, "");
+  }
+  listen(integer c, string n, key id, string m) {
+    llListenRemove(c);
+    llOwnerSay("Elegiste: " + m);
+  }
+}""",
+    "listen seguro": """integer h;
+default {
+  state_entry(){ h = llListen(0, "", llGetOwner(), ""); }
+  listen(integer c, string n, key id, string m) { llListenRemove(h); }
+}""",
+    "timer seguro": """float T = 1.0;
+default { state_entry(){ llSetTimerEvent(T); } timer(){ /* trabajo */ } }"""
+}
+
+# --------------------------------------------------------
+# BÚSQUEDA WEB (DeepSeek -> Firecrawl fallback)
+# --------------------------------------------------------
+def web_search_fallback(term):
+    term_enc = requests.utils.quote(term)
+    # 1) DeepSeek (ejemplo)
+    try:
+        url_ds = f"https://api.deepseek.com/search?q={term_enc}&format=json"
+        r = requests.get(url_ds, timeout=5)
+        if r.ok:
+            data = r.json()
+            if data.get("results"):
+                return [{"title": r.get("title",""), "url": r.get("url","")} for r in data["results"][:5]]
+    except:
+        pass
+    # 2) Firecrawl
+    try:
+        url_fc = f"https://api.firecrawl.com/search?q={term_enc}&format=json"
+        r = requests.get(url_fc, timeout=5)
+        if r.ok:
+            data = r.json()
+            if data.get("results"):
+                return [{"title": r.get("title",""), "url": r.get("url","")} for r in data["results"][:5]]
+    except:
+        pass
+    return []
+
+# --------------------------------------------------------
+# WIKIPEDIA (resumen)
+# --------------------------------------------------------
+def wiki_summary(term):
+    if not term:
+        return "Indica un término."
+    try:
+        t = term.strip().replace(" ", "_")
+        url = f"https://es.wikipedia.org/api/rest_v1/page/summary/{t}"
+        r = requests.get(url, timeout=5)
+        if r.ok:
+            data = r.json()
+            extract = data.get("extract")
+            return extract or "No encuentro resumen en Wikipedia."
+        else:
+            return "No encontré la página en Wikipedia."
+    except Exception as e:
+        return f"Error consultando Wikipedia: {str(e)}"
+
+# --------------------------------------------------------
+# CLIMA (OpenWeather)
+# --------------------------------------------------------
+def obtener_clima(ciudad):
+    if not OPENWEATHER_API_KEY:
+        return "API de clima no configurada."
+    ciudad_q = requests.utils.quote(ciudad)
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={ciudad_q}&appid={OPENWEATHER_API_KEY}&units=metric&lang=es"
+    try:
+        r = requests.get(url, timeout=5)
+        d = r.json()
+        if d.get("cod") != 200:
+            return f"No pude obtener el clima para {ciudad}."
+        desc = d["weather"][0]["description"]
+        temp = d["main"]["temp"]
+        hum = d["main"]["humidity"]
+        viento = d["wind"].get("speed", 0)
+        return f"Clima en {ciudad}: {desc}. Temp {temp}°C, Humedad {hum}%, Viento {viento} m/s."
+    except Exception as e:
+        return f"Error al obtener el clima: {str(e)}"
+
+# --------------------------------------------------------
+# RSS (Infobae / SeraphimSL)
 # --------------------------------------------------------
 RSS_NEWS = "https://www.infobae.com/argentina-footer/infobae/rss/"
 RSS_EVENTS = "https://www.seraphimsl.com/feed/"
@@ -68,356 +290,334 @@ def leer_rss(url):
         return "No hay resultados."
     salida = []
     for item in feed.entries[:5]:
-        titulo = clean_text(item.title)
-        salida.append(f"- {titulo}")
+        salida.append(f"- {clean_text(item.title)}")
     return "\n".join(salida)
 
 # --------------------------------------------------------
-# CLIMA CON OPENWEATHER
-# --------------------------------------------------------
-def obtener_clima(ciudad):
-    if not OPENWEATHER_API_KEY:
-        return "API de clima no configurada."
-    
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={ciudad}&appid={OPENWEATHER_API_KEY}&units=metric&lang=es"
-    
-    try:
-        r = requests.get(url, timeout=5)
-        data = r.json()
-        if data.get("cod") != 200:
-            return f"No pude obtener el clima para {ciudad}."
-        
-        desc = data["weather"][0]["description"]
-        temp = data["main"]["temp"]
-        hum = data["main"]["humidity"]
-        viento = data["wind"]["speed"]
-        
-        return f"Clima en {ciudad}: {desc}. Temperatura: {temp}°C, Humedad: {hum}%, Viento: {viento} m/s."
-    except Exception as e:
-        return f"Error al obtener el clima: {str(e)}"
-
-# --------------------------------------------------------
-# DETECCION DE SCRIPT LSL
-# --------------------------------------------------------
-def parece_lsl(text):
-    claves = [
-        "default", "state_entry", "touch_start",
-        "llSay", "llOwnerSay", "llSetPos",
-        "llDialog", "key ", "vector ", "rotation "
-    ]
-    return any(c in text for c in claves)
-
-def contiene_riesgos_lsl(text):
-    riesgos = [
-        "llSensor", "llSensorRepeat", "llSetTimerEvent",
-        "timer()", "llListen", "listen("
-    ]
-    return any(r in text for r in riesgos)
-
-def script_incompleto(text):
-    if "default" not in text:
-        return True
-    if text.count("{") != text.count("}"):
-        return True
-    return False
-
-def guardar_script(user, text):
-    ts = str(int(time.time()))
-    sessions[user]["scripts"][ts] = text
-    return ts
-
-# --------------------------------------------------------
-# MEMORIA / RECORDATORIOS POR USUARIO
-# --------------------------------------------------------
-def guardar_recordatorio(user, clave, valor):
-    sessions[user]["memoria"]["recordatorios"][clave] = valor
-
-def obtener_recordatorio(user, clave):
-    return sessions[user]["memoria"]["recordatorios"].get(clave, "No recuerdo eso.")
-
-def guardar_nota(user, texto):
-    ts = str(int(time.time()))
-    sessions[user]["memoria"]["notas"][ts] = texto
-    return ts
-
-def listar_notas(user):
-    notas = sessions[user]["memoria"]["notas"]
-    return notas if notas else "No tienes notas guardadas."
-
-def agregar_tarea(user, tarea):
-    ts = str(int(time.time()))
-    sessions[user]["memoria"]["tareas"][ts] = {"tarea": tarea, "completa": False}
-    return ts
-
-def listar_tareas(user):
-    tareas = sessions[user]["memoria"]["tareas"]
-    return tareas if tareas else "No tienes tareas."
-
-# --------------------------------------------------------
-# PROCESAR MENSAJE DE SL
+# COMANDOS Y RUTAS
 # --------------------------------------------------------
 @app.route("/chat", methods=["POST"])
 def chat():
-    data = request.json
+    data = request.json or {}
     user = data.get("user", "anon")
-    msg = data.get("msg", "")
-
-    # Crear sesión si no existe
-    if user not in sessions:
-        sessions[user] = {
-            "lang": "es",
-            "history": [],
-            "lsl_mode": False,
-            "scripts": {},
-            "memoria": {"recordatorios": {}, "notas": {}, "tareas": {}}
-        }
-
-    # 1) Detectar cambio de idioma
-    change = detectar_cambio_idioma(msg, user)
-    if change:
-        return jsonify({"reply": clean_text(change)})
-
+    raw_msg = data.get("msg", "") or ""
+    msg = clean_text(raw_msg)
     m = msg.lower().strip()
 
-    # ---------------- COMANDOS @zenko ----------------
+    ensure_session(user)
+
+    # Detectar cambio de idioma @zenko <code>
+    if m.startswith("@zenko "):
+        maybe = m.replace("@zenko ", "").strip()
+        if maybe in ["es","en","fr","it"]:
+            sessions[user]["lang"] = maybe
+            return jsonify({"reply": f"Idioma cambiado a {maybe}."})
+
+    # Comandos LSL ON/OFF
     if m == "@zenko lsl on":
         sessions[user]["lsl_mode"] = True
+        agregar_historial(user, "Modo LSL activado")
         return jsonify({"reply": "Modo LSL activado."})
-
     if m == "@zenko lsl off":
         sessions[user]["lsl_mode"] = False
+        agregar_historial(user, "Modo LSL desactivado")
         return jsonify({"reply": "Modo LSL desactivado."})
 
-    # ---------------- FUNCIONES DE ZENKO ----------------
+    # ¿Qué puede hacer?
     if "@zenko funciones" in m or "zenko que puedes hacer" in m:
         funciones = [
-            "💻 Programación LSL: reescribir scripts, detectar incompletos, optimizar, analizar performance y comparar scripts",
-            "📝 Guardar y listar scripts por usuario",
-            "🗂 Memoria personal: recordatorios, notas y tareas",
-            "📰 Leer RSS de noticias y eventos",
-            "🌤 Clima real por ciudad usando OpenWeatherMap",
-            "🌐 Responder preguntas generales de forma directa y clara",
-            "🌐 Búsqueda web con DeepSeek y Firecrawl",
-            "📚 Wikipedia / definiciones rápidas",
-            "🦊 Mantener modo LSL siempre con debug activado"
+            "Programación LSL: reescribir, analizar, optimizar, comparar",
+            "Guardar/listar/ver scripts por usuario",
+            "Memoria personal: recordatorios, notas, tareas",
+            "RSS de noticias y eventos",
+            "Clima real por ciudad",
+            "Búsqueda web (DeepSeek -> Firecrawl fallback)",
+            "Wikipedia / definiciones",
+            "Snippets LSL",
+            "Historial consultable",
+            "Contexto / continuar trabajo"
         ]
-        return jsonify({"reply": "Estas son las funciones que puedo hacer:\n" + "\n".join(funciones)})
+        return jsonify({"reply": "Funciones:\n" + "\n".join(funciones)})
 
-    # ---------------- MEMORIA / RECORDATORIOS ----------------
-    if "@zenko recuerda" in m:
+    # MEMORIA: recordatorios
+    if m.startswith("@zenko recuerda"):
         try:
-            clave, valor = msg.split("recuerda",1)[1].split(":",1)
-            guardar_recordatorio(user, clave.strip(), valor.strip())
-            return jsonify({"reply": f"Recordatorio guardado: {clave.strip()}"})
-        except:
+            rest = raw_msg.split("recuerda",1)[1]
+            clave, valor = rest.split(":",1)
+            clave = clean_text(clave)
+            valor = clean_text(valor)
+            sessions[user]["memoria"]["recordatorios"][clave] = valor
+            agregar_historial(user, f"Recordatorio guardado: {clave}")
+            return jsonify({"reply": f"Recordatorio guardado: {clave}"})
+        except Exception:
             return jsonify({"reply": "Formato incorrecto. Usa: @zenko recuerda <clave>: <valor>"})
 
-    if "@zenko que" in m:
+    if m.startswith("@zenko que"):
+        # ej: @zenko que color es mi favorito?
         try:
-            clave = msg.split("que",1)[1].strip().replace("?", "")
-            valor = obtener_recordatorio(user, clave)
+            clave = raw_msg.split("que",1)[1].strip().replace("?", "")
+            clave = clean_text(clave)
+            valor = sessions[user]["memoria"]["recordatorios"].get(clave, "No recuerdo eso.")
             return jsonify({"reply": valor})
-        except:
-            return jsonify({"reply": "No pude encontrar ese recordatorio."})
+        except Exception:
+            return jsonify({"reply": "No pude recuperar ese recordatorio."})
 
-    if "@zenko guarda nota:" in m:
-        texto = msg.split("nota:",1)[1].strip()
-        sid = guardar_nota(user, texto)
+    # Notas
+    if m.startswith("@zenko guarda nota:"):
+        texto = raw_msg.split("nota:",1)[1].strip()
+        sid = str(now_ts())
+        sessions[user]["memoria"]["notas"][sid] = clean_text(texto)
+        agregar_historial(user, "Nota guardada", sid)
         return jsonify({"reply": f"Nota guardada con ID {sid}"})
 
-    if "@zenko mostrar notas" in m:
-        notas = listar_notas(user)
-        return jsonify({"reply": str(notas)})
+    if m.startswith("@zenko mostrar notas"):
+        notas = sessions[user]["memoria"]["notas"]
+        if not notas:
+            return jsonify({"reply": "No tienes notas guardadas."})
+        out = "\n".join([f"{k}: {v}" for k,v in notas.items()])
+        return jsonify({"reply": out})
 
-    if "@zenko añade tarea:" in m:
-        tarea = msg.split("tarea:",1)[1].strip()
-        ts = agregar_tarea(user, tarea)
-        return jsonify({"reply": f"Tarea añadida con ID {ts}"})
+    # Tareas
+    if m.startswith("@zenko añade tarea:"):
+        texto = raw_msg.split("tarea:",1)[1].strip()
+        tid = str(now_ts())
+        sessions[user]["memoria"]["tareas"][tid] = {"tarea": clean_text(texto), "completa": False}
+        agregar_historial(user, "Tarea añadida", tid)
+        return jsonify({"reply": f"Tarea añadida con ID {tid}"})
 
-    if "@zenko lista tareas" in m:
-        tareas = listar_tareas(user)
-        return jsonify({"reply": str(tareas)})
+    if m.startswith("@zenko lista tareas"):
+        tareas = sessions[user]["memoria"]["tareas"]
+        if not tareas:
+            return jsonify({"reply": "No tienes tareas."})
+        out = "\n".join([f"{k}: {v['tarea']} (completa: {v['completa']})" for k,v in tareas.items()])
+        return jsonify({"reply": out})
 
-    # ---------------- RSS ----------------
+    if m.startswith("@zenko completa tarea"):
+        # formato: @zenko completa tarea <id>
+        parts = m.split()
+        if len(parts) >= 3:
+            tid = parts[-1]
+            if tid in sessions[user]["memoria"]["tareas"]:
+                sessions[user]["memoria"]["tareas"][tid]["completa"] = True
+                agregar_historial(user, "Tarea completada", tid)
+                return jsonify({"reply": f"Tarea {tid} marcada como completa."})
+        return jsonify({"reply": "Indica ID de tarea: @zenko completa tarea <id>"})
+
+    # RSS
     if "zenko noticias" in m:
         return jsonify({"reply": leer_rss(RSS_NEWS)})
-
     if "zenko eventos" in m:
         return jsonify({"reply": leer_rss(RSS_EVENTS)})
 
-    # ---------------- CLIMA ----------------
+    # CLIMA
     if m.startswith("zenko clima"):
-        ciudad = msg.split("clima",1)[1].strip()
-        if ciudad:
-            return jsonify({"reply": obtener_clima(ciudad)})
-        else:
+        ciudad = raw_msg.split("clima",1)[1].strip()
+        if not ciudad:
             return jsonify({"reply": "Indica la ciudad: zenko clima <ciudad>"})
+        return jsonify({"reply": obtener_clima(ciudad)})
 
-    # ---------------- BÚSQUEDA WEB CON FALLBACK ----------------
+    # BÚSQUEDA WEB CON FALLBACK
     if m.startswith("@zenko busca"):
-        termino = msg.split("busca",1)[1].strip()
+        termino = raw_msg.split("busca",1)[1].strip()
         if not termino:
-            return jsonify({"reply": "Indica qué deseas buscar: @zenko busca <término>"})
-        
-        resultados = []
-
-        # Intentar con DeepSeek
-        try:
-            url_ds = f"https://api.deepseek.com/search?q={termino}&format=json"
-            r = requests.get(url_ds, timeout=5)
-            data = r.json()
-            if "results" in data and data["results"]:
-                resultados = data["results"][:5]
-                resultados = [f"- {res['title']}: {res['url']}" for res in resultados]
-        except:
-            pass
-
-        # Si no hay resultados, intentar con Firecrawl
-        if not resultados:
-            try:
-                url_fc = f"https://api.firecrawl.com/search?q={termino}&format=json"
-                r = requests.get(url_fc, timeout=5)
-                data = r.json()
-                if "results" in data and data["results"]:
-                    resultados = data["results"][:5]
-                    resultados = [f"- {res['title']}: {res['url']}" for res in resultados]
-            except:
-                pass
-
+            return jsonify({"reply": "Indica qué buscar: @zenko busca <término>"})
+        resultados = web_search_fallback(termino)
         if resultados:
-            return jsonify({"reply": "Resultados de búsqueda:\n" + "\n".join(resultados)})
-        else:
-            return jsonify({"reply": "No encontré resultados en DeepSeek ni en Firecrawl."})
+            out = "\n".join([f"- {r['title']}: {r['url']}" for r in resultados])
+            return jsonify({"reply": "Resultados:\n" + out})
+        return jsonify({"reply": "No encontré resultados en DeepSeek ni Firecrawl."})
 
-    # ---------------- WIKIPEDIA / DEFINICIONES ----------------
+    # WIKIPEDIA / DEFINICIONES
     if m.startswith("@zenko define") or m.startswith("@zenko wikipedia"):
-        termino = msg.split("define",1)[-1].strip() if "define" in m else msg.split("wikipedia",1)[-1].strip()
+        # toma lo que sigue a 'define' o 'wikipedia'
+        if "define" in m:
+            termino = raw_msg.split("define",1)[1].strip()
+        else:
+            termino = raw_msg.split("wikipedia",1)[1].strip()
         if not termino:
             return jsonify({"reply": "Indica el término: @zenko define <término>"})
-        
+        return jsonify({"reply": wiki_summary(termino)})
+
+    # SNIPPETS
+    if m.startswith("@zenko snippet"):
+        key = raw_msg.replace("@zenko snippet", "").strip().lower()
+        # buscar substring en keys
+        for k in LSL_SNIPPETS:
+            if k in key:
+                agregar_historial(user, f"Snippet generado: {k}")
+                return jsonify({"reply": LSL_SNIPPETS[k]})
+        return jsonify({"reply": "Snippets disponibles: " + ", ".join(LSL_SNIPPETS.keys())})
+
+    # HISTORIAL Y SCRIPTS
+    if m.startswith("@zenko historial") or m.startswith("@zenko que hicimos"):
+        return jsonify({"reply": historial_resumen(user)})
+
+    if m.startswith("@zenko listar scripts") or m.startswith("@zenko lista scripts"):
+        keys = list(sessions[user]["scripts"].keys())
+        if not keys:
+            return jsonify({"reply": "No hay scripts guardados."})
+        return jsonify({"reply": "Scripts:\n" + "\n".join(keys)})
+
+    if m.startswith("@zenko ver script"):
+        # formato: @zenko ver script <id>
+        parts = raw_msg.split()
+        if len(parts) >= 4:
+            sid = parts[-1]
+            script = ver_script(user, sid)
+            if script:
+                return jsonify({"reply": script})
+            return jsonify({"reply": "ID de script no encontrado."})
+        return jsonify({"reply": "Usa: @zenko ver script <id>"})
+
+    if m.startswith("@zenko guarda script") or m.startswith("@zenko guarda"):
+        # guarda el texto completo enviado (raw_msg) o el campo 'script'
+        script_text = data.get("script") or raw_msg.split("guarda",1)[1].strip()
+        if not script_text:
+            return jsonify({"reply": "Proporciona el script a guardar."})
+        sid = guardar_script(user, script_text)
+        return jsonify({"reply": f"Script guardado con ID {sid}"})
+
+    # COMPARADOR: permite usar '---' en el cuerpo para separar A y B
+    if "compara" in m and "---" in raw_msg:
         try:
-            url = f"https://es.wikipedia.org/api/rest_v1/page/summary/{termino.replace(' ', '_')}"
-            r = requests.get(url, timeout=5)
-            data = r.json()
-            if "extract" in data:
-                return jsonify({"reply": data["extract"]})
-            else:
-                return jsonify({"reply": "No encontré información en Wikipedia."})
-        except Exception as e:
-            return jsonify({"reply": f"Error consultando Wikipedia: {str(e)}"})
+            parts = raw_msg.split("---")
+            a = parts[0].split("compara",1)[1].strip()
+            b = parts[1].strip()
+            diff = comparar_scripts_text(a, b)
+            agregar_historial(user, "Comparador ejecutado")
+            return jsonify({"reply": diff or "No hay diferencias textuales."})
+        except Exception:
+            return jsonify({"reply": "No pude comparar. Asegúrate de usar '---' para separar scripts."})
 
-    # ---------------- MODO LSL ----------------
-    if sessions[user]["lsl_mode"] and parece_lsl(msg):
-        if script_incompleto(msg):
-            prompt = PROMPTS[sessions[user]["lang"]] + """
-[MODO LSL - DETECCION DE SCRIPT INCOMPLETO]
-Analiza el script proporcionado.
-Indica claramente que partes faltan o estan mal definidas.
-No reescribas el script completo.
-No hagas roleplay.
-Debug siempre activo.
-"""
-        elif contiene_riesgos_lsl(msg):
-            prompt = PROMPTS[sessions[user]["lang"]] + """
-[MODO LSL - ANALISIS DE PERFORMANCE]
-Analiza el script LSL.
-Detecta:
-- Uso de llSensor / llSensorRepeat
-- Timers y frecuencia
-- Listeners activos
-- Eventos repetitivos
-Explica impactos de performance.
-Propone mejoras concretas.
-No reescribas codigo salvo ejemplo puntual.
-No hagas roleplay.
-Debug siempre activo.
-"""
-        elif "compara" in m and "---" in msg:
-            prompt = PROMPTS[sessions[user]["lang"]] + """
-[MODO LSL - COMPARADOR DE SCRIPTS]
-Compara los scripts proporcionados.
-Indica diferencias reales, funcionalidad y performance.
-No repitas codigo completo.
-No hagas roleplay.
-Debug siempre activo.
-"""
-        elif "laggy" in m or "region lenta" in m or "optimiza" in m:
-            prompt = PROMPTS[sessions[user]["lang"]] + """
-[MODO LSL - OPTIMIZACION PARA REGION LAGGY]
-Reescribe el script pensando en regiones con alto lag.
-Reduce:
-- Sensores frecuentes
-- Timers rapidos
-- Listeners persistentes
-Prefiere:
-- Eventos bajo demanda
-- Checks condicionales
-- Cacheo de valores
-Mantiene funcionalidad.
-Incluye codigo optimizado.
-Explica brevemente las decisiones.
-No hagas roleplay.
-Debug siempre activo.
-"""
+    # ------------------------------------------------
+    # DETECCION DE INTENCION / CONTEXTO PERSISTENTE
+    # ------------------------------------------------
+    intent = detectar_intencion(msg, user)
+    if intent == "continuacion":
+        ctx = get_contexto(user)
+        if not ctx or not ctx.get("data"):
+            return jsonify({"reply": "No hay contexto previo para continuar."})
+        # Reusar el contexto según su tipo
+        tipo = ctx.get("tipo")
+        data_ctx = ctx.get("data")
+        if tipo == "script":
+            # volver a procesar el script (reescritura/analisis)
+            # guardamos de nuevo y delegamos al bloque LSL (simular pegar)
+            sid = guardar_script(user, data_ctx)
+            agregar_historial(user, "Continuacion: re-procesando script", sid)
+            # construir prompt similar al modo LSL:
+            prompt = PROMPTS[sessions[user]["lang"]] + "\n[LSL - CONTINUACION]\nDebug siempre activo.\nScript ID: " + sid + "\nUsuario:\n" + data_ctx + "\nZenko:"
+            try:
+                r = requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                    json={"model": MODEL, "messages":[{"role":"system","content":prompt},{"role":"user","content":data_ctx}]},
+                    timeout=15
+                )
+                reply = r.json()["choices"][0]["message"]["content"]
+                return jsonify({"reply": clean_text(reply) + f"\n\n[Script guardado con ID {sid}]"})
+            except Exception:
+                return jsonify({"reply": "Error al continuar con el contexto."})
+        elif tipo == "resumen":
+            # generar resumen
+            agregar_historial(user, "Continuacion: resumen")
+            prompt = PROMPTS[sessions[user]["lang"]] + "\nResumen requerido:\n" + data_ctx + "\nZenko:"
+            try:
+                r = requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                    json={"model": MODEL, "messages":[{"role":"system","content":prompt},{"role":"user","content":data_ctx}]},
+                    timeout=15
+                )
+                reply = r.json()["choices"][0]["message"]["content"]
+                return jsonify({"reply": clean_text(reply)})
+            except:
+                return jsonify({"reply": "Error generando resumen."})
         else:
-            prompt = PROMPTS[sessions[user]["lang"]] + """
-[MODO LSL - REESCRITURA AUTOMATICA]
-Reescribe el script completo.
-Corrige errores.
-Optimiza de forma segura.
-Mantiene funcionalidad.
-Explica brevemente los cambios.
-No agregues nuevas funciones innecesarias.
-No hagas roleplay.
+            return jsonify({"reply": "Contexto no manejable para continuar."})
+
+    # Si detectó un script nuevo (pegado)
+    if detectar_intencion(msg, user) == "script":
+        # guardar contexto
+        set_contexto(user, "script", raw_msg)
+        sessions[user]["lsl_mode"] = True  # asegurar modo LSL
+        sid = guardar_script(user, raw_msg)
+        agregar_historial(user, "Script detectado y guardado", sid)
+
+        # decidir sub-modo LSL según riesgos
+        if script_incompleto(raw_msg):
+            modo = "[LSL] DETECCION DE SCRIPT INCOMPLETO"
+        elif contiene_riesgos_lsl(raw_msg):
+            modo = "[LSL] ANALISIS DE PERFORMANCE"
+        elif "laggy" in m or "optimiza" in m:
+            modo = "[LSL] OPTIMIZACION REGION LAGGY"
+        else:
+            modo = "[LSL] REESCRITURA AUTOMATICA"
+
+        prompt = PROMPTS[sessions[user]["lang"]] + f"""
+{modo}
 Debug siempre activo.
+Script ID: {sid}
+Usuario:
+{raw_msg}
+Zenko:
 """
+        try:
+            r = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                json={"model": MODEL, "messages":[{"role":"system","content":prompt},{"role":"user","content":raw_msg}]},
+                timeout=20
+            )
+            reply = r.json()["choices"][0]["message"]["content"]
+            # respuesta final con nota de guardado
+            agregar_historial(user, "Procesado script", sid)
+            return jsonify({"reply": clean_text(reply) + f"\n\n[Script guardado con ID {sid}]"})
+        except Exception:
+            return jsonify({"reply": "No pude procesar el script en este momento."})
 
-        prompt += "\nUsuario:\n" + msg + "\nZenko:"
+    # Texto largo -> proponer resumen
+    if intent == "texto_largo":
+        set_contexto(user, "resumen", raw_msg)
+        agregar_historial(user, "Texto largo detectado")
+        return jsonify({"reply": "Detecté texto largo. ¿Deseas que haga un resumen? Responde 'continuar' para proceder."})
 
-        response = requests.post(
+    # Diagnóstico simple por palabras
+    if intent == "diagnostico":
+        set_contexto(user, "diagnostico", raw_msg)
+        agregar_historial(user, "Solicitud de diagnostico")
+        # heurístico básico
+        riesgos = contiene_riesgos_lsl(raw_msg)
+        if riesgos:
+            return jsonify({"reply": "Posibles problemas detectados:\n- " + "\n- ".join(riesgos)})
+        return jsonify({"reply": "No detecté problemas LSL obvios. Describe el comportamiento para afinar el diagnóstico."})
+
+    # MENSAJE NORMAL: enviar al modelo con prompt directo y sin florituras
+    system_prompt = PROMPTS[sessions[user]["lang"]]
+    payload = {
+        "model": MODEL,
+        "messages": [
+            {"role":"system","content": system_prompt},
+            {"role":"user","content": raw_msg}
+        ]
+    }
+    try:
+        resp = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-            json={
-                "model": MODEL,
-                "messages": [{"role": "system", "content": prompt},
-                             {"role": "user", "content": msg}]
-            }
+            json=payload,
+            timeout=15
         )
-
-        try:
-            reply = response.json()["choices"][0]["message"]["content"]
-        except:
-            reply = "No pude responder en este momento."
-
-        return jsonify({"reply": clean_text(reply)})
-
-    # ---------------- MENSAJE NORMAL ----------------
-    prompt = PROMPTS[sessions[user]["lang"]] + "\nUsuario: " + msg + "\nZenko:"
-
-    response = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-        json={
-            "model": MODEL,
-            "messages": [{"role": "system", "content": prompt},
-                         {"role": "user", "content": msg}]
-        }
-    )
-
-    try:
-        reply = response.json()["choices"][0]["message"]["content"]
-    except:
+        reply = resp.json()["choices"][0]["message"]["content"]
+    except Exception:
         reply = "No pude responder en este momento."
 
+    agregar_historial(user, "Consulta normal")
     return jsonify({"reply": clean_text(reply)})
-
 
 @app.route("/")
 def home():
     return "Zenko Online"
 
-# --------------------------------------------------------
-# INICIO
-# --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
