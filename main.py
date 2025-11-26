@@ -33,7 +33,7 @@ def now_ts() -> int:
 # --------------------------------------------------------
 # PROMPT BASE (DIRECTO, SIN FILOSOFAR)
 # --------------------------------------------------------
-PROMPT_BASE = """
+PROMPT_BASE = """\
 Eres Zenko, un espiritu kitsune amable, jugueton y astuto que habita en el bosque de Aokigahara.
 Responde de manera clara, concreta y directa, sin metáforas ni divagaciones.
 Cuando se trate de programación / LSL: debug siempre activo, responde técnico y optimiza.
@@ -621,3 +621,4 @@ def home():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
