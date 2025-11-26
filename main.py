@@ -73,6 +73,30 @@ def leer_rss(url):
     return "\n".join(salida)
 
 # --------------------------------------------------------
+# CLIMA CON OPENWEATHER
+# --------------------------------------------------------
+def obtener_clima(ciudad):
+    if not OPENWEATHER_API_KEY:
+        return "API de clima no configurada."
+    
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={ciudad}&appid={OPENWEATHER_API_KEY}&units=metric&lang=es"
+    
+    try:
+        r = requests.get(url, timeout=5)
+        data = r.json()
+        if data.get("cod") != 200:
+            return f"No pude obtener el clima para {ciudad}."
+        
+        desc = data["weather"][0]["description"]
+        temp = data["main"]["temp"]
+        hum = data["main"]["humidity"]
+        viento = data["wind"]["speed"]
+        
+        return f"Clima en {ciudad}: {desc}. Temperatura: {temp}°C, Humedad: {hum}%, Viento: {viento} m/s."
+    except Exception as e:
+        return f"Error al obtener el clima: {str(e)}"
+
+# --------------------------------------------------------
 # DETECCION DE SCRIPT LSL
 # --------------------------------------------------------
 def parece_lsl(text):
@@ -164,6 +188,19 @@ def chat():
         sessions[user]["lsl_mode"] = False
         return jsonify({"reply": "Modo LSL desactivado."})
 
+    # ---------------- FUNCIONES DE ZENKO ----------------
+    if "@zenko funciones" in m or "zenko que puedes hacer" in m:
+        funciones = [
+            "💻 Programación LSL: reescribir scripts, detectar incompletos, optimizar, analizar performance y comparar scripts",
+            "📝 Guardar y listar scripts por usuario",
+            "🗂 Memoria personal: recordatorios, notas y tareas",
+            "📰 Leer RSS de noticias y eventos",
+            "🌤 Clima real por ciudad usando OpenWeatherMap",
+            "🌐 Responder preguntas generales de forma directa y clara",
+            "🦊 Mantener modo LSL siempre con debug activado"
+        ]
+        return jsonify({"reply": "Estas son las funciones que puedo hacer:\n" + "\n".join(funciones)})
+
     # ---------------- GUARDADO DE SCRIPTS ----------------
     if sessions[user]["lsl_mode"]:
         if "guardar script" in m:
@@ -222,6 +259,14 @@ def chat():
 
     if "zenko eventos" in m:
         return jsonify({"reply": leer_rss(RSS_EVENTS)})
+
+    # ---------------- CLIMA ----------------
+    if m.startswith("zenko clima"):
+        ciudad = msg.split("clima",1)[1].strip()
+        if ciudad:
+            return jsonify({"reply": obtener_clima(ciudad)})
+        else:
+            return jsonify({"reply": "Indica la ciudad: zenko clima <ciudad>"})
 
     # ---------------- MODO LSL ----------------
     if sessions[user]["lsl_mode"] and parece_lsl(msg):
