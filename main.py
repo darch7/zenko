@@ -9,6 +9,7 @@ app = Flask(__name__)
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 MODEL = "llama-3.1-8b-instant"
+OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 
 # --------------------------------------------------------
 # SESIONES POR USUARIO
@@ -112,6 +113,33 @@ def guardar_script(user, text):
     return ts
 
 # --------------------------------------------------------
+# MEMORIA / RECORDATORIOS POR USUARIO
+# --------------------------------------------------------
+def guardar_recordatorio(user, clave, valor):
+    sessions[user]["memoria"]["recordatorios"][clave] = valor
+
+def obtener_recordatorio(user, clave):
+    return sessions[user]["memoria"]["recordatorios"].get(clave, "No recuerdo eso.")
+
+def guardar_nota(user, texto):
+    ts = str(int(time.time()))
+    sessions[user]["memoria"]["notas"][ts] = texto
+    return ts
+
+def listar_notas(user):
+    notas = sessions[user]["memoria"]["notas"]
+    return notas if notas else "No tienes notas guardadas."
+
+def agregar_tarea(user, tarea):
+    ts = str(int(time.time()))
+    sessions[user]["memoria"]["tareas"][ts] = {"tarea": tarea, "completa": False}
+    return ts
+
+def listar_tareas(user):
+    tareas = sessions[user]["memoria"]["tareas"]
+    return tareas if tareas else "No tienes tareas."
+
+# --------------------------------------------------------
 # PROCESAR MENSAJE DE SL
 # --------------------------------------------------------
 @app.route("/chat", methods=["POST"])
@@ -122,7 +150,13 @@ def chat():
 
     # Crear sesión si no existe
     if user not in sessions:
-        sessions[user] = {"lang": "es", "history": [], "lsl_mode": False, "scripts": {}}
+        sessions[user] = {
+            "lang": "es",
+            "history": [],
+            "lsl_mode": False,
+            "scripts": {},
+            "memoria": {"recordatorios": {}, "notas": {}, "tareas": {}}
+        }
 
     # 1) Detectar cambio de idioma
     change = detectar_cambio_idioma(msg, user)
@@ -156,6 +190,41 @@ def chat():
             for sid in sessions[user]["scripts"]:
                 if sid in m:
                     return jsonify({"reply": clean_text(sessions[user]["scripts"][sid])})
+
+    # ---------------- MEMORIA / RECORDATORIOS ----------------
+    if "@zenko recuerda" in m:
+        try:
+            clave, valor = msg.split("recuerda",1)[1].split(":",1)
+            guardar_recordatorio(user, clave.strip(), valor.strip())
+            return jsonify({"reply": f"Recordatorio guardado: {clave.strip()}"})
+        except:
+            return jsonify({"reply": "Formato incorrecto. Usa: @zenko recuerda <clave>: <valor>"})
+
+    if "@zenko que" in m:
+        try:
+            clave = msg.split("que",1)[1].strip().replace("?", "")
+            valor = obtener_recordatorio(user, clave)
+            return jsonify({"reply": valor})
+        except:
+            return jsonify({"reply": "No pude encontrar ese recordatorio."})
+
+    if "@zenko guarda nota:" in m:
+        texto = msg.split("nota:",1)[1].strip()
+        sid = guardar_nota(user, texto)
+        return jsonify({"reply": f"Nota guardada con ID {sid}"})
+
+    if "@zenko mostrar notas" in m:
+        notas = listar_notas(user)
+        return jsonify({"reply": str(notas)})
+
+    if "@zenko añade tarea:" in m:
+        tarea = msg.split("tarea:",1)[1].strip()
+        ts = agregar_tarea(user, tarea)
+        return jsonify({"reply": f"Tarea añadida con ID {ts}"})
+
+    if "@zenko lista tareas" in m:
+        tareas = listar_tareas(user)
+        return jsonify({"reply": str(tareas)})
 
     # ---------------- RSS ----------------
     if "zenko noticias" in m:
@@ -284,3 +353,4 @@ def home():
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
