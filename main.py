@@ -84,7 +84,8 @@ def agregar_historial(user, accion, extra=None):
 
 def historial_resumen(user, limite=10):
     ensure_session(user)
-    h = sessions[user]["history'][-limite:]
+    h = sessions[user]["history"][-limite:]
+
     if not h:
         return "No hay historial reciente."
     out = []
@@ -621,4 +622,5 @@ def home():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
