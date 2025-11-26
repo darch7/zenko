@@ -3,7 +3,7 @@ import requests
 import os
 import unicodedata
 import feedparser
-import json
+import time
 
 app = Flask(__name__)
 
@@ -16,39 +16,14 @@ MODEL = "llama-3.1-8b-instant"
 sessions = {}
 
 # --------------------------------------------------------
-# MEMORIA POR USUARIO (CON CLAVES PERSONALIZADAS)
-# --------------------------------------------------------
-MEMORIA_FILE = "memoria.json"
-
-def guardar_memoria(usuario, clave, valor):
-    try:
-        with open(MEMORIA_FILE, "r") as f:
-            memoria = json.load(f)
-    except FileNotFoundError:
-        memoria = {}
-    if usuario not in memoria:
-        memoria[usuario] = {}
-    memoria[usuario][clave] = valor
-    with open(MEMORIA_FILE, "w") as f:
-        json.dump(memoria, f)
-
-def recordar(usuario, clave):
-    try:
-        with open(MEMORIA_FILE, "r") as f:
-            memoria = json.load(f)
-        return memoria.get(usuario, {}).get(clave, None)
-    except FileNotFoundError:
-        return None
-
-# --------------------------------------------------------
-# REMOVER ACENTOS Y SALTOS DE LÍNEA PARA SL
+# REMOVER ACENTOS Y SALTOS DE LINEA
 # --------------------------------------------------------
 def clean_text(text):
     text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
     return text.replace("\n", " ")
 
 # --------------------------------------------------------
-# PROMPTS POR IDIOMA (RESPETANDO TU PROMPT EXACTO)
+# PROMPTS POR IDIOMA
 # --------------------------------------------------------
 PROMPT_BASE = """
 Eres Zenko, un espiritu kitsune amable e inteligente que habita en el bosque de Aokigahara. 
@@ -67,7 +42,6 @@ Para conocimiento general, programacion o cualquier tema fuera de Rengoku, respo
 Debes negar conocer a Ektor Salvatore o cualquier cosa relacionada con Tuareg HUD. 
 Zenko es un kitsune macho y tiene 7 colas. 
 Zenko solo responde aquello que el usuario le pregunte directamente; no debe ofrecer informacion adicional ni sugerencias no solicitadas. 
-Para todo lo demas tambien debe responder solo si se le pregunta. 
 Solo puedes mencionar o hablar de Mireia o Cucu si el usuario te pregunta explicitamente por sus nombres o si pregunta especificamente sobre Rengoku. En cualquier otro caso, nunca los menciones por iniciativa propia.
 """
 
@@ -108,6 +82,36 @@ def leer_rss(url):
     return "\n".join(salida)
 
 # --------------------------------------------------------
+# DETECCION DE SCRIPT LSL
+# --------------------------------------------------------
+def parece_lsl(text):
+    claves = [
+        "default", "state_entry", "touch_start",
+        "llSay", "llOwnerSay", "llSetPos",
+        "llDialog", "key ", "vector ", "rotation "
+    ]
+    return any(c in text for c in claves)
+
+def contiene_riesgos_lsl(text):
+    riesgos = [
+        "llSensor", "llSensorRepeat", "llSetTimerEvent",
+        "timer()", "llListen", "listen("
+    ]
+    return any(r in text for r in riesgos)
+
+def script_incompleto(text):
+    if "default" not in text:
+        return True
+    if text.count("{") != text.count("}"):
+        return True
+    return False
+
+def guardar_script(user, text):
+    ts = str(int(time.time()))
+    sessions[user]["scripts"][ts] = text
+    return ts
+
+# --------------------------------------------------------
 # PROCESAR MENSAJE DE SL
 # --------------------------------------------------------
 @app.route("/chat", methods=["POST"])
@@ -118,53 +122,139 @@ def chat():
 
     # Crear sesión si no existe
     if user not in sessions:
-        sessions[user] = {"lang": "es", "history": []}
+        sessions[user] = {"lang": "es", "history": [], "lsl_mode": False, "scripts": {}}
 
     # 1) Detectar cambio de idioma
     change = detectar_cambio_idioma(msg, user)
     if change:
         return jsonify({"reply": clean_text(change)})
 
-    m = msg.lower()
+    m = msg.lower().strip()
 
-    # 2) COMANDOS DE MEMORIA PERSONALIZADOS
-    # Guardar recuerdo con clave
-    if m.startswith("zenko recuerda "):
-        # Formato: "zenko recuerda [clave] que [valor]"
-        try:
-            partes = msg[len("zenko recuerda "):].split(" que ", 1)
-            if len(partes) == 2:
-                clave = partes[0].strip()
-                valor = partes[1].strip()
-                guardar_memoria(user, clave, valor)
-                return jsonify({"reply": clean_text(f"De acuerdo, recordaré {clave}: {valor}")})
-            else:
-                return jsonify({"reply": "Formato incorrecto. Usa: zenko recuerda [clave] que [valor]"})
-        except:
-            return jsonify({"reply": "No pude guardar el recuerdo."})
+    # ---------------- COMANDOS @zenko ----------------
+    if m == "@zenko lsl on":
+        sessions[user]["lsl_mode"] = True
+        return jsonify({"reply": "Modo LSL activado."})
 
-    # Recordar por clave
-    if m.startswith("zenko qué recuerdo"):
-        # Formato opcional: "zenko qué recuerdo [clave]"
-        partes = msg[len("zenko qué recuerdo"):].strip()
-        if partes:
-            clave = partes
-            valor = recordar(user, clave)
-            if valor:
-                return jsonify({"reply": clean_text(f"Recuerdo que {clave}: {valor}")})
-            else:
-                return jsonify({"reply": f"No tengo recuerdos guardados para {clave}."})
-        else:
-            return jsonify({"reply": "Debes especificar la clave del recuerdo."})
+    if m == "@zenko lsl off":
+        sessions[user]["lsl_mode"] = False
+        return jsonify({"reply": "Modo LSL desactivado."})
 
-    # 3) PALABRAS CLAVE para funciones
-    if "zenko noticias" in m or "zenko news" in m or "zenko nouvelles" in m or "zenko notizie" in m:
+    # ---------------- GUARDADO DE SCRIPTS ----------------
+    if sessions[user]["lsl_mode"]:
+        if "guardar script" in m:
+            sid = guardar_script(user, msg)
+            return jsonify({"reply": f"Script guardado con ID {sid}"})
+
+        if "listar scripts" in m:
+            lista = sessions[user]["scripts"].keys()
+            if not lista:
+                return jsonify({"reply": "No tienes scripts guardados."})
+            return jsonify({"reply": "Scripts guardados:\n" + "\n".join(lista)})
+
+        if "ver script" in m:
+            for sid in sessions[user]["scripts"]:
+                if sid in m:
+                    return jsonify({"reply": clean_text(sessions[user]["scripts"][sid])})
+
+    # ---------------- RSS ----------------
+    if "zenko noticias" in m:
         return jsonify({"reply": leer_rss(RSS_NEWS)})
 
-    if "zenko eventos" in m or "zenko events" in m or "zenko evenements" in m or "zenko eventi" in m:
+    if "zenko eventos" in m:
         return jsonify({"reply": leer_rss(RSS_EVENTS)})
 
-    # 4) PROCESAR MENSAJE NORMAL PARA GROQ
+    # ---------------- MODO LSL ----------------
+    if sessions[user]["lsl_mode"] and parece_lsl(msg):
+        # SCRIPT INCOMPLETO
+        if script_incompleto(msg):
+            prompt = PROMPTS[sessions[user]["lang"]] + """
+[MODO LSL - DETECCION DE SCRIPT INCOMPLETO]
+Analiza el script proporcionado.
+Indica claramente que partes faltan o estan mal definidas.
+No reescribas el script completo.
+No hagas roleplay.
+Debug siempre activo.
+"""
+        # ANALISIS DE PERFORMANCE
+        elif contiene_riesgos_lsl(msg):
+            prompt = PROMPTS[sessions[user]["lang"]] + """
+[MODO LSL - ANALISIS DE PERFORMANCE]
+Analiza el script LSL.
+Detecta:
+- Uso de llSensor / llSensorRepeat
+- Timers y frecuencia
+- Listeners activos
+- Eventos repetitivos
+Explica impactos de performance.
+Propone mejoras concretas.
+No reescribas codigo salvo ejemplo puntual.
+No hagas roleplay.
+Debug siempre activo.
+"""
+        # COMPARADOR DE SCRIPTS
+        elif "compara" in m and "---" in msg:
+            prompt = PROMPTS[sessions[user]["lang"]] + """
+[MODO LSL - COMPARADOR DE SCRIPTS]
+Compara los scripts proporcionados.
+Indica diferencias reales, funcionalidad y performance.
+No repitas codigo completo.
+No hagas roleplay.
+Debug siempre activo.
+"""
+        # OPTIMIZACION PARA REGIONES LAGGY
+        elif "laggy" in m or "region lenta" in m or "optimiza" in m:
+            prompt = PROMPTS[sessions[user]["lang"]] + """
+[MODO LSL - OPTIMIZACION PARA REGION LAGGY]
+Reescribe el script pensando en regiones con alto lag.
+Reduce:
+- Sensores frecuentes
+- Timers rapidos
+- Listeners persistentes
+Prefiere:
+- Eventos bajo demanda
+- Checks condicionales
+- Cacheo de valores
+Mantiene funcionalidad.
+Incluye codigo optimizado.
+Explica brevemente las decisiones.
+No hagas roleplay.
+Debug siempre activo.
+"""
+        # REESCRITURA AUTOMATICA
+        else:
+            prompt = PROMPTS[sessions[user]["lang"]] + """
+[MODO LSL - REESCRITURA AUTOMATICA]
+Reescribe el script completo.
+Corrige errores.
+Optimiza de forma segura.
+Mantiene funcionalidad.
+Explica brevemente los cambios.
+No agregues nuevas funciones innecesarias.
+No hagas roleplay.
+Debug siempre activo.
+"""
+
+        prompt += "\nUsuario:\n" + msg + "\nZenko:"
+
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+            json={
+                "model": MODEL,
+                "messages": [{"role": "system", "content": prompt},
+                             {"role": "user", "content": msg}]
+            }
+        )
+
+        try:
+            reply = response.json()["choices"][0]["message"]["content"]
+        except:
+            reply = "No pude responder en este momento."
+
+        return jsonify({"reply": clean_text(reply)})
+
+    # ---------------- MENSAJE NORMAL ----------------
     prompt = PROMPTS[sessions[user]["lang"]] + "\nUsuario: " + msg + "\nZenko:"
 
     response = requests.post(
@@ -188,7 +278,6 @@ def chat():
 @app.route("/")
 def home():
     return "Zenko Online"
-
 
 # --------------------------------------------------------
 # INICIO
