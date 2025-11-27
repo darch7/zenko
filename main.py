@@ -359,16 +359,12 @@ def chat():
 
     ensure_session(user)
 
-    # COMANDOS: mostrar lista
-    if "@zenko funciones" in m or "zenko que puedes hacer" in m:
+    # COMANDO: lista de funciones
+    if raw_msg.lower().startswith("@zenko funciones") or raw_msg.lower().startswith("zenko que puedes hacer"):
         salida = [f"{cmd}: {desc}" for cmd, desc in ZENKO_COMMANDS.items()]
         texto = "Zenko puede hacer:\n" + "\n".join(salida)
-        # reemplazar ñ por nh para evitar problemas de encoding
-        texto = texto.replace("ñ", "nh").replace("Ñ", "NH")
-        return Response(
-            json.dumps({"reply": texto}, ensure_ascii=False),
-            mimetype="application/json"
-        )
+        texto = texto.replace("ñ", "nh").replace("Ñ", "NH")  # opcional para evitar u00f1
+        return jsonify({"reply": texto})
 
     # Detectar cambio de idioma @zenko <code>
     if m.startswith("@zenko "):
@@ -669,6 +665,7 @@ def home():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
 
 
