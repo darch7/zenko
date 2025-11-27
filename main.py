@@ -36,6 +36,11 @@ app = Flask(__name__)
 
 # Config (usa variables de entorno)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+
+LLAMA_MODEL = "llama-3.1-8b-instant"
+DEEPSEEK_MODEL = "deepseek-chat"
+
 MODEL = "llama-3.1-8b-instant"
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 GNEWS_API_KEY = os.getenv("GNEWS_API_KEY")
@@ -43,7 +48,7 @@ GNEWS_API_KEY = os.getenv("GNEWS_API_KEY")
 # --------------------------------------------------------
 # SESIONES Y ESTRUCTURAS POR USUARIO
 # --------------------------------------------------------
-sessions = {}  # estructura principal por usuario
+sessions[user].setdefault("model", "llama")
 
 # --------------------------------------------------------
 # UTILIDADES
@@ -563,50 +568,86 @@ def chat():
         if not s:
             return jsonify({"reply": f"No encuentro script {sid}"})
         return jsonify({"reply": s})
+    # CAMBIAR MODELO IA
+    if m.startswith("@zenko modelo"):
+        modelo = m.split("modelo", 1)[1].strip()
+    
+        if modelo in ["llama", "groq"]:
+            sessions[user]["model"] = "llama"
+            return jsonify({"reply": "Modelo cambiado a Llama (Groq)."})
+    
+        if modelo in ["deepseek", "ds"]:
+            sessions[user]["model"] = "deepseek"
+            return jsonify({"reply": "Modelo cambiado a DeepSeek."})
+    
+        return jsonify({"reply": "Modelos disponibles: llama | deepseek"})
 
     # --------------------------------------------------------
     # Mensajes normales / preguntas abiertas
     # --------------------------------------------------------
     if reply == "Comando no reconocido":
-        try:
-            # Enviar mensaje al modelo Groq / Llama
-            headers = {
-                "Authorization": f"Bearer {GROQ_API_KEY}",
-                "Content-Type": "application/json"
-            }
+       modelo = sessions[user].get("model", "llama")
 
-            payload = {
-                "model": MODEL,
-                "messages": [
-                    {"role": "system", "content": PROMPTS[sessions[user]["lang"]]},
-                    {"role": "user", "content": msg}
-                ]
-            }
+try:
+    if modelo == "deepseek":
+        headers = {
+            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+            "Content-Type": "application/json"
+        }
 
-            r = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers=headers,
-                json=payload,
-                timeout=10
-            )
+        payload = {
+            "model": DEEPSEEK_MODEL,
+            "messages": [
+                {"role": "system", "content": PROMPTS[sessions[user]["lang"]]},
+                {"role": "user", "content": msg}
+            ]
+        }
 
-            if r.ok:
-                data = r.json()
-                texto = data["choices"][0]["message"]["content"]
-                reply = clean_text(texto)
-            else:
-                reply = "Error al generar respuesta desde el modelo."
+        r = requests.post(
+            "https://api.deepseek.com/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=10
+        )
 
-        except Exception as e:
-            reply = f"Error al generar respuesta: {str(e)}"
+    else:  # LLAMA / GROQ
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        }
 
-    return jsonify({"reply": reply})
+        payload = {
+            "model": LLAMA_MODEL,
+            "messages": [
+                {"role": "system", "content": PROMPTS[sessions[user]["lang"]]},
+                {"role": "user", "content": msg}
+            ]
+        }
+
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=10
+        )
+
+    if r.ok:
+        data = r.json()
+        reply = clean_text(data["choices"][0]["message"]["content"])
+    else:
+        reply = "Error al generar respuesta desde el modelo."
+
+except Exception as e:
+    reply = f"Error al generar respuesta: {str(e)}"
+
+return jsonify({"reply": reply})
 
 # --------------------------------------------------------
 # RUN SERVER
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
