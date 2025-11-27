@@ -410,11 +410,13 @@ def obtener_noticias_gnews():
 def chat():
     data = request.json or {}
     user = data.get("user", "anon")
-    msg = clean_text(data.get("msg", "") or "")
+    raw_msg = data.get("msg", "") or ""
+    msg = clean_text(raw_msg)
     m = msg.lower().strip()
 
     ensure_session(user)
     reply = "Comando no reconocido"
+    modelo = sessions[user].get("model", "llama")  # llama por defecto
 
     # COMANDO: cambiar modelo
     if m.startswith("@zenko llama"):
@@ -424,23 +426,20 @@ def chat():
         sessions[user]["model"] = "deepseek"
         return jsonify({"reply": "Modelo cambiado a DeepSeek (respuestas directas)."})
     
-    # COMANDO: funciones
+    # --------------------------------------------------------
+    # FUNCIONES
+    # --------------------------------------------------------
     if m.startswith("@zenko funciones") or m.startswith("zenko que puedes hacer"):
-        salida = []
-        for cmd, desc in ZENKO_COMMANDS.items():
-            salida.append(f"{clean_text(cmd)}: {clean_text(desc)}")
+        salida = [f"{clean_text(cmd)}: {clean_text(desc)}" for cmd, desc in ZENKO_COMMANDS.items()]
         texto = "Zenko puede hacer:\n" + "\n".join(salida)
-        return Response(
-            json.dumps({"reply": texto}, ensure_ascii=False),
-            mimetype="application/json"
-        )
+        return Response(json.dumps({"reply": texto}, ensure_ascii=False), mimetype="application/json")
 
-    reply = "Comando no reconocido"
-
-    # Cambiar idioma
+    # --------------------------------------------------------
+    # CAMBIO DE IDIOMA
+    # --------------------------------------------------------
     if m.startswith("@zenko "):
         maybe = m.replace("@zenko ", "").strip()
-        if maybe in ["es","en","fr","it"]:
+        if maybe in ["es", "en", "fr", "it"]:
             sessions[user]["lang"] = maybe
             return jsonify({"reply": f"Idioma cambiado a {maybe}."})
 
@@ -573,66 +572,63 @@ def chat():
         if not s:
             return jsonify({"reply": f"No encuentro script {sid}"})
         return jsonify({"reply": s})
-    # CAMBIAR MODELO IA
-    if m.startswith("@zenko modelo"):
-        modelo = m.split("modelo", 1)[1].strip()
-    
-        if modelo in ["llama", "groq"]:
-            sessions[user]["model"] = "llama"
-            return jsonify({"reply": "Modelo cambiado a Llama (Groq)."})
-    
-        if modelo in ["deepseek", "ds"]:
-            sessions[user]["model"] = "deepseek"
-            return jsonify({"reply": "Modelo cambiado a DeepSeek."})
-    
-        return jsonify({"reply": "Modelos disponibles: llama | deepseek"})
+ # --------------------------------------------------------
+    # CAMBIO DE MODELO
+    # --------------------------------------------------------
+    if m.startswith("@zenko llama"):
+        sessions[user]["model"] = "llama"
+        return jsonify({"reply": "Modelo cambiado a Llama."})
 
-    # Mensajes normales / preguntas abiertas
-    if reply == "Comando no reconocido":
-        modelo = sessions[user].get("model", "llama")  # Llama por defecto
+    if m.startswith("@zenko deepseek"):
+        sessions[user]["model"] = "deepseek"
+        return jsonify({"reply": "Modelo cambiado a DeepSeek."})
 
-        try:
-            if modelo == "deepseek":
-                headers = {
-                    "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-                    "Content-Type": "application/json"
-                }
-                api_url = "https://api.deepseek.ai/v1/chat/completions"
-                model_name = DEEPSEEK_MODEL
-            else:
-                headers = {
-                    "Authorization": f"Bearer {GROQ_API_KEY}",
-                    "Content-Type": "application/json"
-                }
-                api_url = "https://api.groq.com/openai/v1/chat/completions"
-                model_name = LLAMA_MODEL
-
-            payload = {
-                "model": model_name,
-                "messages": [
-                    {"role": "system", "content": PROMPTS[sessions[user]["lang"]]},
-                    {"role": "user", "content": msg}
-                ]
+ --------------------------------------------------------
+    # MENSAJES NORMALES / PREGUNTAS ABIERTAS
+    # --------------------------------------------------------
+    # Si llegamos aquí, significa que no es un comando explícito
+    try:
+        if modelo == "deepseek":
+            headers = {
+                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json"
             }
+            api_url = "https://api.deepseek.ai/v1/chat/completions"  # URL CORREGIDA
+            model_name = DEEPSEEK_MODEL
+        else:  # llama/groq
+            headers = {
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            api_url = "https://api.groq.com/openai/v1/chat/completions"
+            model_name = LLAMA_MODEL
 
-            r = requests.post(api_url, headers=headers, json=payload, timeout=10)
+        payload = {
+            "model": model_name,
+            "messages": [
+                {"role": "system", "content": PROMPTS[sessions[user]["lang"]]},
+                {"role": "user", "content": msg}
+            ]
+        }
 
-            if r.ok:
-                data = r.json()
-                reply = clean_text(data["choices"][0]["message"]["content"])
-            else:
-                reply = f"Error al generar respuesta desde {modelo}. HTTP {r.status_code}"
+        r = requests.post(api_url, headers=headers, json=payload, timeout=10)
+        if r.ok:
+            data = r.json()
+            reply = clean_text(data["choices"][0]["message"]["content"])
+        else:
+            reply = f"Error al generar respuesta desde {modelo} (HTTP {r.status_code})."
 
-        except Exception as e:
-            reply = f"Error al generar respuesta: {str(e)}"
+    except Exception as e:
+        reply = f"Error al generar respuesta: {str(e)}"
 
-        return jsonify({"reply": reply})
+    return jsonify({"reply": reply})
 
 # --------------------------------------------------------
 # RUN SERVER
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
