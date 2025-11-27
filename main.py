@@ -127,23 +127,24 @@ PROMPTS = {
 # --------------------------------------------------------
 # INICIALIZAR SESIÓN
 # --------------------------------------------------------
-def ensure_session(user):
+ def ensure_session(user):
     if user not in sessions:
         sessions[user] = {
             "lang": "es",
-            "history": [],             # lista de acciones (dicts)
-            "lsl_mode": False,         # se activa con @zenko lsl on
-            "scripts": {},             # id -> script text
-            "memoria": {               # memoria por usuario
+            "history": [],
+            "lsl_mode": False,
+            "scripts": {},
+            "memoria": {
                 "recordatorios": {},
                 "notas": {},
                 "tareas": {}
             },
-            "contexto": {              # contexto persistente
-                "tipo": None,         # 'script'|'resumen'|'diagnostico'|'comparador'
+            "contexto": {
+                "tipo": None,
                 "data": None,
                 "ts": 0
-            }
+            },
+            "model": "llama"  # <--- aquí inicializas el modelo por defecto
         }
 
 # --------------------------------------------------------
@@ -646,6 +647,7 @@ def chat():
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
