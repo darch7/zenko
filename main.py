@@ -383,8 +383,9 @@ def chat():
     m = msg.lower().strip()
 
     ensure_session(user)
-    
-    if raw_msg.lower().startswith("@zenko funciones") or raw_msg.lower().startswith("zenko que puedes hacer"):
+
+    # COMANDO: funciones
+    if m.startswith("@zenko funciones") or m.startswith("zenko que puedes hacer"):
         salida = []
         for cmd, desc in ZENKO_COMMANDS.items():
             salida.append(f"{clean_text(cmd)}: {clean_text(desc)}")
@@ -395,6 +396,12 @@ def chat():
             json.dumps({"reply": texto}, ensure_ascii=False),
             mimetype="application/json"
         )
+        
+    reply = "Comando no reconocido"
+    return Response(
+        json.dumps({"reply": clean_text(reply)}, ensure_ascii=False),
+        mimetype="application/json"
+    )
 
     # Detectar cambio de idioma @zenko <code>
     if m.startswith("@zenko "):
@@ -698,6 +705,7 @@ def home():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
 
 
