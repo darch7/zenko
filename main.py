@@ -563,34 +563,34 @@ def chat():
         if not s:
             return jsonify({"reply": f"No encuentro script {sid}"})
         return jsonify({"reply": s})
- # --------------------------------------------------------
-# Mensajes normales / preguntas abiertas
-# --------------------------------------------------------
-if reply == "Comando no reconocido":
-    try:
-        # Enviar mensaje al modelo Groq / Llama
-        headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
-        payload = {
-            "model": MODEL,
-            "input": f"{PROMPTS[sessions[user]['lang']]} Usuario: {msg}\nZenko:"
-        }
-        r = requests.post(
-            "https://api.groq.ai/v1/completions",
-            headers=headers,
-            json=payload,
-            timeout=10
-        )
-        if r.ok:
-            data = r.json()
-            # Se asume que la respuesta viene en data['output']
-            texto = data.get("output", "No pude generar respuesta.")
-            reply = clean_text(texto)
-        else:
-            reply = "Error al generar respuesta desde el modelo."
-    except Exception as e:
-        reply = f"Error al generar respuesta: {str(e)}"
 
-    
+    # --------------------------------------------------------
+    # Mensajes normales / preguntas abiertas
+    # --------------------------------------------------------
+    if reply == "Comando no reconocido":
+        try:
+            # Enviar mensaje al modelo Groq / Llama
+            headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+            payload = {
+                "model": MODEL,
+                "input": f"{PROMPTS[sessions[user]['lang']]} Usuario: {msg}\nZenko:"
+            }
+            r = requests.post(
+                "https://api.groq.ai/v1/completions",
+                headers=headers,
+                json=payload,
+                timeout=10
+            )
+            if r.ok:
+                data = r.json()
+                # Se asume que la respuesta viene en data['output']
+                texto = data.get("output", "No pude generar respuesta.")
+                reply = clean_text(texto)
+            else:
+                reply = "Error al generar respuesta desde el modelo."
+        except Exception as e:
+            reply = f"Error al generar respuesta: {str(e)}"
+
     return jsonify({"reply": reply})
 
 # --------------------------------------------------------
@@ -598,11 +598,3 @@ if reply == "Comando no reconocido":
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
-
-
-
-
-
-
-
-
