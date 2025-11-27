@@ -411,8 +411,7 @@ def obtener_noticias_gnews():
 def chat():
     data = request.json or {}
     user = data.get("user", "anon")
-    raw_msg = data.get("msg", "") or ""
-    msg = clean_text(raw_msg)
+    msg = clean_text(data.get("msg", "") or "")
     m = msg.lower().strip()
 
     ensure_session(user)
@@ -589,58 +588,56 @@ def chat():
     
         return jsonify({"reply": "Modelos disponibles: llama | deepseek"})
 
-# --------------------------------------------------------
-# Mensajes normales / preguntas abiertas
-# --------------------------------------------------------
-if reply == "Comando no reconocido":
-    modelo = sessions[user].get("model", "llama")  # Llama por defecto
+ # -------------------------------
+    # Mensajes normales / preguntas abiertas
+    # -------------------------------
+    if reply == "Comando no reconocido":
+        modelo = sessions[user].get("model", "llama")  # Llama por defecto
 
-    try:
-        # Definimos headers y payload según el modelo
-        if modelo == "deepseek":
-            headers = {
-                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-                "Content-Type": "application/json"
+        try:
+            if modelo == "deepseek":
+                headers = {
+                    "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                    "Content-Type": "application/json"
+                }
+                api_url = "https://api.deepseek.com/chat/completions"
+                model_name = DEEPSEEK_MODEL
+            else:
+                headers = {
+                    "Authorization": f"Bearer {GROQ_API_KEY}",
+                    "Content-Type": "application/json"
+                }
+                api_url = "https://api.groq.com/openai/v1/chat/completions"
+                model_name = LLAMA_MODEL
+
+            payload = {
+                "model": model_name,
+                "messages": [
+                    {"role": "system", "content": PROMPTS[sessions[user]["lang"]]},
+                    {"role": "user", "content": msg}
+                ]
             }
-            api_url = "https://api.deepseek.com/chat/completions"
-            model_name = DEEPSEEK_MODEL
 
-        else:  # llama/groq
-            headers = {
-                "Authorization": f"Bearer {GROQ_API_KEY}",
-                "Content-Type": "application/json"
-            }
-            api_url = "https://api.groq.com/openai/v1/chat/completions"
-            model_name = LLAMA_MODEL
+            r = requests.post(api_url, headers=headers, json=payload, timeout=10)
 
-        payload = {
-            "model": model_name,
-            "messages": [
-                {"role": "system", "content": PROMPTS[sessions[user]["lang"]]},  # mismo prompt para todos
-                {"role": "user", "content": msg}
-            ]
-        }
+            if r.ok:
+                data = r.json()
+                reply = clean_text(data["choices"][0]["message"]["content"])
+            else:
+                reply = "Error al generar respuesta desde el modelo."
 
-        r = requests.post(api_url, headers=headers, json=payload, timeout=10)
+        except Exception as e:
+            reply = f"Error al generar respuesta: {str(e)}"
 
-        if r.ok:
-            data = r.json()
-            # Obtiene la respuesta del modelo
-            reply = clean_text(data["choices"][0]["message"]["content"])
-        else:
-            reply = "Error al generar respuesta desde el modelo."
-
-    except Exception as e:
-        reply = f"Error al generar respuesta: {str(e)}"
-
-    # Devuelve la respuesta final
-    return jsonify({"reply": reply})
+        # <-- este return debe estar dentro de chat()
+        return jsonify({"reply": reply})
 
 # --------------------------------------------------------
 # RUN SERVER
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
