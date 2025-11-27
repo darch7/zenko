@@ -216,36 +216,37 @@ default { state_entry(){ llSetTimerEvent(T); } timer(){ /* trabajo */ } }"""
 # BÚSQUEDA WEB (DeepSeek -> Firecrawl fallback)
 # --------------------------------------------------------
 def web_search_fallback(term):
-    term_enc = requests.utils.quote(term)
-    # 1) DeepSeek
-    try:
-        url_ds = f"https://api.deepseek.com/search?q={term_enc}&format=json"
-        r = requests.get(url_ds, timeout=5)
-        if r.ok:
-            data = r.json()
-            if data.get("results"):
-                return [
-                    {"title": x.get("title",""), "url": x.get("url","")}
-                    for x in data["results"][:5]
-                ]
-    except:
-        pass
+    headers = {
+        "Authorization": f"Bearer {os.getenv('FIRECRAWL_API_KEY')}",
+        "Content-Type": "application/json"
+    }
 
-    # 2) Firecrawl fallback
+    payload = {
+        "query": term,
+        "limit": 5,
+        "lang": "es"
+    }
+
     try:
-        url_fc = f"https://api.firecrawl.com/search?q={term_enc}&format=json"
-        r = requests.get(url_fc, timeout=5)
+        r = requests.post(
+            "https://api.firecrawl.dev/v1/search",
+            headers=headers,
+            json=payload,
+            timeout=8
+        )
         if r.ok:
             data = r.json()
-            if data.get("results"):
+            results = data.get("data", [])
+            if results:
                 return [
                     {"title": x.get("title",""), "url": x.get("url","")}
-                    for x in data["results"][:5]
+                    for x in results
                 ]
-    except:
-        pass
+    except Exception as e:
+        print("Firecrawl error:", e)
 
     return []
+
 
 # --------------------------------------------------------
 # WIKIPEDIA (resumen)
@@ -630,6 +631,7 @@ def home():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
 
 
