@@ -45,13 +45,34 @@ sessions = {}  # estructura principal por usuario
 # --------------------------------------------------------
 # UTILIDADES
 # --------------------------------------------------------
+import unicodedata
+import time
+
 def clean_text(text: str) -> str:
+    """
+    Limpia el texto:
+    - Elimina tildes y diéresis de todas las vocales
+    - Reemplaza ñ por nh
+    - Sustituye saltos de línea CRLF por LF
+    - Elimina espacios al inicio y final
+    """
     if not isinstance(text, str):
         return ""
-    txt = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
-    return txt.replace("\r\n", "\n").strip()
+    
+    # Normalizar y separar acentos
+    normalized = unicodedata.normalize("NFKD", text)
+    
+    # Mantener solo caracteres que no sean marcas diacríticas
+    text_sin_tildes = "".join(c for c in normalized if not unicodedata.combining(c))
+    
+    # Reemplazar ñ por nh
+    text_final = text_sin_tildes.replace("ñ", "nh").replace("Ñ", "NH")
+    
+    # Reemplazar saltos de línea y limpiar espacios
+    return text_final.replace("\r\n", "\n").strip()
 
 def now_ts() -> int:
+    """Retorna timestamp actual en segundos"""
     return int(time.time())
 
 # --------------------------------------------------------
@@ -644,6 +665,7 @@ def home():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
 
 
