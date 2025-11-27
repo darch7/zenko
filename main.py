@@ -583,19 +583,18 @@ def chat():
         sessions[user]["model"] = "deepseek"
         return jsonify({"reply": "Modelo cambiado a DeepSeek."})
 
-    #--------------------------------------------------------
-    # MENSAJES NORMALES / PREGUNTAS ABIERTAS
-    # --------------------------------------------------------
-    # Si llegamos aquí, significa que no es un comando explícito
+# -------------------------------
+# Mensajes normales / preguntas abiertas
+# -------------------------------
+if reply == "Comando no reconocido":
+    modelo = sessions[user].get("model", "llama")  # Llama por defecto
+
+    # forzar que chat libre use Llama, incluso si user eligió DeepSeek
+    if modelo == "deepseek":
+        modelo = "llama"
+
     try:
-        if modelo == "deepseek":
-            headers = {
-                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-                "Content-Type": "application/json"
-            }
-            api_url = "https://api.deepseek.ai/v1/chat/completions"  # URL CORREGIDA
-            model_name = DEEPSEEK_MODEL
-        else:  # llama/groq
+        if modelo == "llama":
             headers = {
                 "Authorization": f"Bearer {GROQ_API_KEY}",
                 "Content-Type": "application/json"
@@ -612,11 +611,12 @@ def chat():
         }
 
         r = requests.post(api_url, headers=headers, json=payload, timeout=10)
+
         if r.ok:
             data = r.json()
             reply = clean_text(data["choices"][0]["message"]["content"])
         else:
-            reply = f"Error al generar respuesta desde {modelo} (HTTP {r.status_code})."
+            reply = "Error al generar respuesta desde el modelo."
 
     except Exception as e:
         reply = f"Error al generar respuesta: {str(e)}"
@@ -628,6 +628,7 @@ def chat():
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
