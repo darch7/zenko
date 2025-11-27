@@ -694,10 +694,10 @@ Zenko:
         reply = "No pude responder en este momento."
 
     agregar_historial(user, "Consulta normal")
-return Response(
-    json.dumps({"reply": clean_text(reply)}, ensure_ascii=False),
-    mimetype="application/json"
-)
+    return Response(
+        json.dumps({"reply": clean_text(reply)}, ensure_ascii=False),
+        mimetype="application/json"
+    )
 
 @app.route("/")
 def home():
@@ -705,6 +705,7 @@ def home():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
 
 
