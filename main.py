@@ -415,7 +415,7 @@ def chat():
     msg = clean_text(raw_msg)
     m = msg.lower().strip()
 
-    ensure_session(user)  # crea sesión si no existe
+    ensure_session(user)
 
     # COMANDO: cambiar modelo
     if m.startswith("@zenko llama"):
@@ -588,57 +588,56 @@ def chat():
     
         return jsonify({"reply": "Modelos disponibles: llama | deepseek"})
 
-# --------------------------------------------------------
-# Mensajes normales / preguntas abiertas
-# --------------------------------------------------------
-if reply == "Comando no reconocido":
-    modelo = sessions[user].get("model", "llama")  # por defecto Llama
+    # --------------------------------------------------------
+    # Mensajes normales / preguntas abiertas
+    # --------------------------------------------------------
+    if reply == "Comando no reconocido":
+        modelo = sessions[user].get("model", "llama")  # por defecto Llama
 
-    try:
-        headers = {"Content-Type": "application/json"}
+        try:
+            headers = {"Content-Type": "application/json"}
 
-        if modelo == "deepseek":
-            # Usamos DeepSeek pero con el mismo prompt que Llama
-            headers["Authorization"] = f"Bearer {DEEPSEEK_API_KEY}"
-            payload = {
-                "model": DEEPSEEK_MODEL,
-                "messages": [
-                    {"role": "system", "content": PROMPTS[sessions[user]["lang"]]},
-                    {"role": "user", "content": msg}
-                ]
-            }
-            url = "https://api.deepseek.com/chat/completions"
+            if modelo == "deepseek":
+                headers["Authorization"] = f"Bearer {DEEPSEEK_API_KEY}"
+                payload = {
+                    "model": DEEPSEEK_MODEL,
+                    "messages": [
+                        {"role": "system", "content": PROMPTS[sessions[user]["lang"]]},
+                        {"role": "user", "content": msg}
+                    ]
+                }
+                url = "https://api.deepseek.com/chat/completions"
 
-        else:  # LLAMA / GROQ
-            headers["Authorization"] = f"Bearer {GROQ_API_KEY}"
-            payload = {
-                "model": LLAMA_MODEL,
-                "messages": [
-                    {"role": "system", "content": PROMPTS[sessions[user]["lang"]]},
-                    {"role": "user", "content": msg}
-                ]
-            }
-            url = "https://api.groq.com/openai/v1/chat/completions"
+            else:  # LLAMA / GROQ
+                headers["Authorization"] = f"Bearer {GROQ_API_KEY}"
+                payload = {
+                    "model": LLAMA_MODEL,
+                    "messages": [
+                        {"role": "system", "content": PROMPTS[sessions[user]["lang"]]},
+                        {"role": "user", "content": msg}
+                    ]
+                }
+                url = "https://api.groq.com/openai/v1/chat/completions"
 
-        r = requests.post(url, headers=headers, json=payload, timeout=10)
+            r = requests.post(url, headers=headers, json=payload, timeout=10)
 
-        if r.ok:
-            data = r.json()
-            # Para ambos modelos asumimos la misma estructura de respuesta
-            reply = clean_text(data["choices"][0]["message"]["content"])
-        else:
-            reply = f"Error al generar respuesta desde {modelo}."
+            if r.ok:
+                data = r.json()
+                reply = clean_text(data["choices"][0]["message"]["content"])
+            else:
+                reply = f"Error al generar respuesta desde {modelo}."
 
-    except Exception as e:
-        reply = f"Error al generar respuesta: {str(e)}"
+        except Exception as e:
+            reply = f"Error al generar respuesta: {str(e)}"
 
-    return jsonify({"reply": reply})
+    return jsonify({"reply": reply})  # ESTA LINEA DEBE ESTAR DENTRO DE chat()
 
 # --------------------------------------------------------
 # RUN SERVER
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
