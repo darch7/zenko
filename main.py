@@ -491,8 +491,8 @@ def chat():
         return jsonify({"reply": leer_rss(RSS_EVENTS)})
 
     # CLIMA
-    if m.startswith("zenko clima"):
-        ciudad = raw_msg.split("clima",1)[1].strip()
+if m.startswith("@zenko clima") or m.startswith("zenko clima"):
+    ciudad = raw_msg.split("clima",1)[1].strip()
         if not ciudad:
             return jsonify({"reply": "Indica la ciudad: zenko clima <ciudad>"})
         return jsonify({"reply": obtener_clima(ciudad)})
@@ -705,6 +705,7 @@ def home():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
 
 
