@@ -48,27 +48,29 @@ sessions = {}  # estructura principal por usuario
 # UTILIDADES
 # --------------------------------------------------------
 def clean_text(text: str) -> str:
-    """
-    Limpia el texto:
-    - Elimina tildes de todas las vocales
-    - Reemplaza ñ por nh
-    - Sustituye saltos de línea CRLF por LF
-    - Elimina espacios al inicio y final
-    """
     if not isinstance(text, str):
         return ""
-
-    # Normalizar y separar acentos
-    normalized = unicodedata.normalize("NFKD", text)
     
-    # Mantener solo caracteres que no sean marcas diacríticas
-    text_sin_tildes = "".join(c for c in normalized if not unicodedata.combining(c))
+    # Normalizar para separar los acentos
+    txt = unicodedata.normalize("NFKD", text)
     
     # Reemplazar ñ por nh
-    text_final = text_sin_tildes.replace("ñ", "nh").replace("Ñ", "NH")
+    txt = txt.replace("ñ", "nh").replace("Ñ", "NH")
     
-    # Reemplazar saltos de línea y limpiar espacios
-    return text_final.replace("\r\n", "\n").strip()
+    # Eliminar todos los diacríticos (acentos)
+    txt = "".join(c for c in txt if not unicodedata.combining(c))
+    
+    # Reemplazar cedilla francesa
+    txt = txt.replace("ç", "c").replace("Ç", "C")
+    
+    # Reemplazar caracteres especiales que quedaron raros (ej: ligaduras)
+    txt = txt.replace("ß", "ss")
+    
+    # Limpiar saltos de línea y espacios extra
+    txt = txt.replace("\r\n", "\n").strip()
+    
+    return txt
+
 
 def now_ts() -> int:
     return int(time.time())
@@ -665,6 +667,7 @@ def home():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
 
 
