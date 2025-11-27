@@ -8,7 +8,6 @@ import difflib
 import json
 from flask import Response
 
-
 ZENKO_COMMANDS = {
     "@zenko funciones": "Muestra esta lista de comandos disponibles.",
     "@zenko recuerda <clave>: <valor>": "Guardar un recordatorio con clave y valor.",
@@ -360,13 +359,15 @@ def chat():
 
     ensure_session(user)
 
-    if "@zenko funciones" in m or "zenko que puedes hacer" in m:
-        salida = [f"{cmd}: {desc}" for cmd, desc in ZENKO_COMMANDS.items()]
-        texto = "Zenko puede hacer:\n" + "\n".join(salida)
-        return Response(
-            json.dumps({"reply": texto}, ensure_ascii=False),
-            mimetype="application/json"
-        )
+if "@zenko funciones" in m or "zenko que puedes hacer" in m:
+    salida = [f"{cmd}: {desc}" for cmd, desc in ZENKO_COMMANDS.items()]
+    texto = "Zenko puede hacer:\n" + "\n".join(salida)
+    # Reemplazar ñ por nh
+    texto = texto.replace("ñ", "nh").replace("Ñ", "NH")
+    return Response(
+        json.dumps({"reply": texto}, ensure_ascii=False),
+        mimetype="application/json"
+    )
 
     # Detectar cambio de idioma @zenko <code>
     if m.startswith("@zenko "):
@@ -667,6 +668,7 @@ def home():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
 
 
