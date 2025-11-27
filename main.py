@@ -415,8 +415,16 @@ def chat():
     msg = clean_text(raw_msg)
     m = msg.lower().strip()
 
-    ensure_session(user)
+    ensure_session(user)  # crea sesión si no existe
 
+    # COMANDO: cambiar modelo
+    if m.startswith("@zenko llama"):
+        sessions[user]["model"] = "llama"
+        return jsonify({"reply": "Modelo cambiado a Llama."})
+    if m.startswith("@zenko deepseek"):
+        sessions[user]["model"] = "deepseek"
+        return jsonify({"reply": "Modelo cambiado a DeepSeek (respuestas directas)."})
+    
     # COMANDO: funciones
     if m.startswith("@zenko funciones") or m.startswith("zenko que puedes hacer"):
         salida = []
@@ -579,63 +587,50 @@ def chat():
             return jsonify({"reply": "Modelo cambiado a DeepSeek."})
     
         return jsonify({"reply": "Modelos disponibles: llama | deepseek"})
+
 # --------------------------------------------------------
-    # Mensajes normales / preguntas abiertas
-    # --------------------------------------------------------
-    if reply == "Comando no reconocido":
-        modelo = sessions[user].get("model", "llama")
+# Mensajes normales / preguntas abiertas
+# --------------------------------------------------------
+if reply == "Comando no reconocido":
+    modelo = sessions[user].get("model", "llama")  # por defecto Llama
 
-        try:
-            if modelo == "deepseek":
-                headers = {
-                    "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-                    "Content-Type": "application/json"
-                }
+    try:
+        headers = {"Content-Type": "application/json"}
 
-                payload = {
-                    "model": DEEPSEEK_MODEL,
-                    "messages": [
-                        {"role": "system", "content": PROMPTS[sessions[user]["lang"]]},
-                        {"role": "user", "content": msg}
-                    ]
-                }
+        if modelo == "deepseek":
+            # Usamos DeepSeek pero con el mismo prompt que Llama
+            headers["Authorization"] = f"Bearer {DEEPSEEK_API_KEY}"
+            payload = {
+                "model": DEEPSEEK_MODEL,
+                "messages": [
+                    {"role": "system", "content": PROMPTS[sessions[user]["lang"]]},
+                    {"role": "user", "content": msg}
+                ]
+            }
+            url = "https://api.deepseek.com/chat/completions"
 
-                r = requests.post(
-                    "https://api.deepseek.com/chat/completions",
-                    headers=headers,
-                    json=payload,
-                    timeout=10
-                )
+        else:  # LLAMA / GROQ
+            headers["Authorization"] = f"Bearer {GROQ_API_KEY}"
+            payload = {
+                "model": LLAMA_MODEL,
+                "messages": [
+                    {"role": "system", "content": PROMPTS[sessions[user]["lang"]]},
+                    {"role": "user", "content": msg}
+                ]
+            }
+            url = "https://api.groq.com/openai/v1/chat/completions"
 
-            else:  # LLAMA / GROQ
-                headers = {
-                    "Authorization": f"Bearer {GROQ_API_KEY}",
-                    "Content-Type": "application/json"
-                }
+        r = requests.post(url, headers=headers, json=payload, timeout=10)
 
-                payload = {
-                    "model": LLAMA_MODEL,
-                    "messages": [
-                        {"role": "system", "content": PROMPTS[sessions[user]["lang"]]},
-                        {"role": "user", "content": msg}
-                    ]
-                }
+        if r.ok:
+            data = r.json()
+            # Para ambos modelos asumimos la misma estructura de respuesta
+            reply = clean_text(data["choices"][0]["message"]["content"])
+        else:
+            reply = f"Error al generar respuesta desde {modelo}."
 
-                r = requests.post(
-                    "https://api.groq.com/openai/v1/chat/completions",
-                    headers=headers,
-                    json=payload,
-                    timeout=10
-                )
-
-            if r.ok:
-                data = r.json()
-                reply = clean_text(data["choices"][0]["message"]["content"])
-            else:
-                reply = "Error al generar respuesta desde el modelo."
-
-        except Exception as e:
-            reply = f"Error al generar respuesta: {str(e)}"
+    except Exception as e:
+        reply = f"Error al generar respuesta: {str(e)}"
 
     return jsonify({"reply": reply})
 
@@ -644,6 +639,7 @@ def chat():
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
