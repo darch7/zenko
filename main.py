@@ -48,32 +48,52 @@ sessions = {}  # estructura principal por usuario
 # UTILIDADES
 # --------------------------------------------------------
 def clean_text(text: str) -> str:
-    """
-    Limpia el texto:
-    - Reemplaza acentos de vocales españolas y francesas por su equivalente sin acento.
-    - Reemplaza ñ por nh.
-    - Reemplaza cedilla francesa ç por c.
-    - Reemplaza ß por ss.
-    - Mantiene solo caracteres ASCII.
-    """
     if not isinstance(text, str):
         return ""
-    
-    # Normalizar para separar acentos
-    txt = unicodedata.normalize("NFKD", text)
-    
-    # Reemplazar caracteres especiales
-    txt = txt.replace("ñ", "nh").replace("Ñ", "NH")
-    txt = txt.replace("ç", "c").replace("Ç", "C")
-    txt = txt.replace("ß", "ss")
-    
-    # Eliminar diacríticos (acentos)
-    txt = "".join(c for c in txt if not unicodedata.combining(c))
-    
-    # Saltos de línea y espacios extra
-    txt = txt.replace("\r\n", "\n").strip()
-    
-    return txt
+
+    REEMPLAZOS = {
+        # Español
+        "á": "a", "Á": "A",
+        "é": "e", "É": "E",
+        "í": "i", "Í": "I",
+        "ó": "o", "Ó": "O",
+        "ú": "u", "Ú": "U",
+        "ñ": "nh", "Ñ": "NH",
+
+        # Francés
+        "à": "a", "À": "A",
+        "â": "a", "Â": "A",
+        "ä": "a", "Ä": "A",
+
+        "è": "e", "È": "E",
+        "ê": "e", "Ê": "E",
+        "ë": "e", "Ë": "E",
+
+        "î": "i", "Î": "I",
+        "ï": "i", "Ï": "I",
+
+        "ô": "o", "Ô": "O",
+        "ö": "o", "Ö": "O",
+
+        "ù": "u", "Ù": "U",
+        "û": "u", "Û": "U",
+        "ü": "u", "Ü": "U",
+
+        "ÿ": "y", "Ÿ": "Y",
+        "ç": "c", "Ç": "C",
+
+        # Alemán
+        "ß": "ss",
+
+        # Signos de apertura (ELIMINAR)
+        "¿": "",
+        "¡": ""
+    }
+
+    for k, v in REEMPLAZOS.items():
+        text = text.replace(k, v)
+
+    return text.replace("\r\n", "\n").strip()
 
 def now_ts() -> int:
     return int(time.time())
@@ -670,6 +690,7 @@ def home():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
 
 
