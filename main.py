@@ -48,29 +48,32 @@ sessions = {}  # estructura principal por usuario
 # UTILIDADES
 # --------------------------------------------------------
 def clean_text(text: str) -> str:
+    """
+    Limpia el texto:
+    - Reemplaza acentos de vocales españolas y francesas por su equivalente sin acento.
+    - Reemplaza ñ por nh.
+    - Reemplaza cedilla francesa ç por c.
+    - Reemplaza ß por ss.
+    - Mantiene solo caracteres ASCII.
+    """
     if not isinstance(text, str):
         return ""
     
-    # Normalizar para separar los acentos
+    # Normalizar para separar acentos
     txt = unicodedata.normalize("NFKD", text)
     
-    # Reemplazar ñ por nh
+    # Reemplazar caracteres especiales
     txt = txt.replace("ñ", "nh").replace("Ñ", "NH")
-    
-    # Eliminar todos los diacríticos (acentos)
-    txt = "".join(c for c in txt if not unicodedata.combining(c))
-    
-    # Reemplazar cedilla francesa
     txt = txt.replace("ç", "c").replace("Ç", "C")
-    
-    # Reemplazar caracteres especiales que quedaron raros (ej: ligaduras)
     txt = txt.replace("ß", "ss")
     
-    # Limpiar saltos de línea y espacios extra
+    # Eliminar diacríticos (acentos)
+    txt = "".join(c for c in txt if not unicodedata.combining(c))
+    
+    # Saltos de línea y espacios extra
     txt = txt.replace("\r\n", "\n").strip()
     
     return txt
-
 
 def now_ts() -> int:
     return int(time.time())
@@ -667,6 +670,7 @@ def home():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
 
 
