@@ -497,6 +497,7 @@ if m.startswith("@zenko clima"):
         return jsonify({"reply": "Indica la ciudad: @zenko clima <ciudad>"})
     return jsonify({"reply": obtener_clima(ciudad)})
 
+
     # BÚSQUEDA WEB CON FALLBACK
     if m.startswith("@zenko busca"):
         termino = raw_msg.split("busca",1)[1].strip()
@@ -705,6 +706,7 @@ def home():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
 
 
