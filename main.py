@@ -376,6 +376,33 @@ def leer_rss(url):
     return "\n".join(salida)
 
 # --------------------------------------------------------
+# NOTICIAS USANDO GNEWS API
+# --------------------------------------------------------
+GNEWS_API_KEY = os.getenv("GNEWS_API_KEY")
+
+def obtener_noticias_gnews():
+    if not GNEWS_API_KEY:
+        return "API de noticias no configurada."
+    
+    url = "https://gnews.io/api/v4/top-headlines?lang=es&country=ar&max=5&apikey=" + GNEWS_API_KEY
+    try:
+        r = requests.get(url, timeout=5)
+        if not r.ok:
+            return "No pude obtener noticias de GNews."
+        data = r.json()
+        articles = data.get("articles", [])
+        if not articles:
+            return "No hay noticias disponibles."
+        salida = []
+        for a in articles:
+            titulo = a.get("title","Sin título")
+            url_n = a.get("url","")
+            salida.append(f"- {titulo}: {url_n}")
+        return "\n".join(salida)
+    except Exception as e:
+        return f"Error al consultar noticias: {str(e)}"
+
+# --------------------------------------------------------
 # COMANDOS Y RUTAS
 # --------------------------------------------------------
 @app.route("/chat", methods=["POST"])
@@ -489,11 +516,9 @@ def chat():
     if m.startswith("@zenko historial"):
         return jsonify({"reply": historial_resumen(user)})
 
-    # RSS
-    if "zenko noticias" in m:
-        return jsonify({"reply": leer_rss(RSS_NEWS)})
-    if "zenko eventos" in m:
-        return jsonify({"reply": leer_rss(RSS_EVENTS)})
+# NOTICIAS
+if "zenko noticias" in m:
+    return jsonify({"reply": obtener_noticias_gnews()})
 
     # CLIMA
     if m.startswith("@zenko clima"):
@@ -552,6 +577,7 @@ def chat():
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
