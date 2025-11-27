@@ -38,6 +38,7 @@ app = Flask(__name__)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 MODEL = "llama-3.1-8b-instant"
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
+GNEWS_API_KEY = os.getenv("GNEWS_API_KEY")
 
 # --------------------------------------------------------
 # SESIONES Y ESTRUCTURAS POR USUARIO
@@ -378,8 +379,6 @@ def leer_rss(url):
 # --------------------------------------------------------
 # NOTICIAS USANDO GNEWS API
 # --------------------------------------------------------
-GNEWS_API_KEY = os.getenv("GNEWS_API_KEY")
-
 def obtener_noticias_gnews():
     if not GNEWS_API_KEY:
         return "API de noticias no configurada."
@@ -577,6 +576,7 @@ if "zenko noticias" in m:
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
