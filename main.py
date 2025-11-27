@@ -385,11 +385,17 @@ def chat():
     ensure_session(user)
 
     # COMANDO: lista de funciones
-    if raw_msg.lower().startswith("@zenko funciones") or raw_msg.lower().startswith("zenko que puedes hacer"):
-        salida = [f"{cmd}: {desc}" for cmd, desc in ZENKO_COMMANDS.items()]
-        texto = "Zenko puede hacer:\n" + "\n".join(salida)
-        texto = texto.replace("ñ", "nh").replace("Ñ", "NH")  # opcional para evitar u00f1
-        return jsonify({"reply": texto})
+if raw_msg.lower().startswith("@zenko funciones") or raw_msg.lower().startswith("zenko que puedes hacer"):
+    salida = []
+    for cmd, desc in ZENKO_COMMANDS.items():
+        salida.append(f"{clean_text(cmd)}: {clean_text(desc)}")
+
+    texto = "Zenko puede hacer:\n" + "\n".join(salida)
+
+    return Response(
+        json.dumps({"reply": texto}, ensure_ascii=False),
+        mimetype="application/json"
+    )
 
     # Detectar cambio de idioma @zenko <code>
     if m.startswith("@zenko "):
@@ -682,7 +688,10 @@ Zenko:
         reply = "No pude responder en este momento."
 
     agregar_historial(user, "Consulta normal")
-    return jsonify({"reply": clean_text(reply)})
+return Response(
+    json.dumps({"reply": clean_text(reply)}, ensure_ascii=False),
+    mimetype="application/json"
+)
 
 @app.route("/")
 def home():
@@ -690,6 +699,7 @@ def home():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
 
 
