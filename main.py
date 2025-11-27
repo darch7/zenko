@@ -212,31 +212,80 @@ default {
 default { state_entry(){ llSetTimerEvent(T); } timer(){ /* trabajo */ } }"""
 }
 
-# --------------------------------------------------------
-# BÚSQUEDA WEB (DeepSeek -> Firecrawl fallback)
-# --------------------------------------------------------
-def web_search_fallback(term):
-    term_enc = requests.utils.quote(term)
-    # 1) DeepSeek (ejemplo)
+ def web_search_fallback(term):
+    term = term.strip()
+    resultados = []
+
+    # ---------------------------------------------
+    # 1) INTENTO CON DEEPSEEK (via chat + fuentes)
+    # ---------------------------------------------
+    if DEEPSEEK_API_KEY:
+        try:
+            payload = {
+                "model": "deepseek-chat",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "Devuelve SOLO una lista de fuentes web relevantes con titulo y URL."
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Busca en la web informacion sobre: {term}"
+                    }
+                ],
+                "temperature": 0.2
+            }
+
+            r = requests.post(
+                "https://api.deepseek.com/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json=payload,
+                timeout=8
+            )
+
+            if r.ok:
+                content = r.json()["choices"][0]["message"]["content"]
+                # heurística simple: buscar URLs
+                lines = content.splitlines()
+                for ln in lines:
+                    if "http" in ln:
+                        resultados.append({
+                            "title": ln[:80],
+                            "url": ln.split()[-1]
+                        })
+
+                if resultados:
+                    return resultados[:5]
+
+        except Exception:
+            pass
+
+    # ---------------------------------------------
+    # 2) FIRECRAWL (fallback real)
+    # ---------------------------------------------
     try:
-        url_ds = f"https://api.deepseek.com/search?q={term_enc}&format=json"
-        r = requests.get(url_ds, timeout=5)
+        term_enc = requests.utils.quote(term)
+        r = requests.get(
+            f"https://api.firecrawl.dev/search?q={term_enc}&limit=5",
+            headers={
+                "Authorization": f"Bearer {os.getenv('FIRECRAWL_API_KEY')}"
+            },
+            timeout=8
+        )
+
         if r.ok:
             data = r.json()
-            if data.get("results"):
-                return [{"title": r.get("title",""), "url": r.get("url","")} for r in data["results"][:5]]
-    except:
+            if "results" in data:
+                return [
+                    {"title": i.get("title", ""), "url": i.get("url", "")}
+                    for i in data["results"]
+                ]
+    except Exception:
         pass
-    # 2) Firecrawl
-    try:
-        url_fc = f"https://api.firecrawl.com/search?q={term_enc}&format=json"
-        r = requests.get(url_fc, timeout=5)
-        if r.ok:
-            data = r.json()
-            if data.get("results"):
-                return [{"title": r.get("title",""), "url": r.get("url","")} for r in data["results"][:5]]
-    except:
-        pass
+
     return []
 
 # --------------------------------------------------------
@@ -622,5 +671,6 @@ def home():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
 
