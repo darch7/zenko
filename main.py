@@ -122,6 +122,8 @@ PROMPTS = {
 # --------------------------------------------------------
 # INICIALIZAR SESIÓN
 # --------------------------------------------------------
+sessions = {}  # <-- Debe estar aquí, antes de ensure_session
+
 def ensure_session(user):
     if user not in sessions:
         sessions[user] = {
@@ -642,6 +644,7 @@ def chat():
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
