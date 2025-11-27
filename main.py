@@ -354,7 +354,9 @@ def obtener_clima(ciudad):
         temp = d["main"]["temp"]
         hum = d["main"]["humidity"]
         viento = d["wind"].get("speed", 0)
-        return f"Clima en {ciudad}: {desc}. Temp {temp}°C, Humedad {hum}%, Viento {viento} m/s."
+        # construir texto limpio sin símbolo °
+        texto = f"Clima en {ciudad}: {desc}. Temp {temp}C, Humedad {hum}%, Viento {viento} m/s."
+        return clean_text(texto)  # aquí aplicamos clean_text para quitar caracteres extra
     except Exception as e:
         return f"Error al obtener el clima: {str(e)}"
 
@@ -550,5 +552,6 @@ def chat():
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
