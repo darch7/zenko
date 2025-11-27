@@ -587,18 +587,22 @@ def chat():
     
         return jsonify({"reply": "Modelos disponibles: llama | deepseek"})
 
+# -------------------------------
+# Mensajes normales / preguntas abiertas
+# -------------------------------
+if reply == "Comando no reconocido":
+    modelo = sessions[user].get("model", "llama")  # Llama por defecto
 
-    # -------------------------------
-    # Mensajes normales / preguntas abiertas
-    # -------------------------------
-    if reply == "Comando no reconocido":
-        modelo = sessions[user].get("model", "llama")  # Llama por defecto
-
-        # Hacemos que DeepSeek se comporte como Llama
+    try:
+        # Definir headers y URL según modelo
         if modelo == "deepseek":
-            modelo = "llama"
-
-        try:
+            headers = {
+                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            api_url = "https://api.deepseek.ai/v1/chat/completions"  # CORREGIDO
+            model_name = DEEPSEEK_MODEL
+        else:
             headers = {
                 "Authorization": f"Bearer {GROQ_API_KEY}",
                 "Content-Type": "application/json"
@@ -606,32 +610,36 @@ def chat():
             api_url = "https://api.groq.com/openai/v1/chat/completions"
             model_name = LLAMA_MODEL
 
-            payload = {
-                "model": model_name,
-                "messages": [
-                    {"role": "system", "content": PROMPTS[sessions[user]["lang"]]},
-                    {"role": "user", "content": msg}
-                ]
-            }
+        # Construir payload idéntico para ambos
+        payload = {
+            "model": model_name,
+            "messages": [
+                {"role": "system", "content": PROMPTS[sessions[user]["lang"]]},
+                {"role": "user", "content": msg}
+            ]
+        }
 
-            r = requests.post(api_url, headers=headers, json=payload, timeout=10)
+        # Llamar a la API
+        r = requests.post(api_url, headers=headers, json=payload, timeout=10)
 
-            if r.ok:
-                data = r.json()
-                reply = clean_text(data["choices"][0]["message"]["content"])
-            else:
-                reply = "Error al generar respuesta desde el modelo."
+        if r.ok:
+            data = r.json()
+            # Ambas APIs devuelven choices[0].message.content
+            reply = clean_text(data["choices"][0]["message"]["content"])
+        else:
+            reply = f"Error al generar respuesta desde {modelo}. HTTP {r.status_code}"
 
-        except Exception as e:
-            reply = f"Error al generar respuesta: {str(e)}"
+    except Exception as e:
+        reply = f"Error al generar respuesta: {str(e)}"
 
-        return jsonify({"reply": reply})
+    return jsonify({"reply": reply})
 
 # --------------------------------------------------------
 # RUN SERVER
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
