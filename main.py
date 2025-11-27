@@ -46,11 +46,6 @@ OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 GNEWS_API_KEY = os.getenv("GNEWS_API_KEY")
 
 # --------------------------------------------------------
-# SESIONES Y ESTRUCTURAS POR USUARIO
-# --------------------------------------------------------
-sessions[user].setdefault("model", "llama")
-
-# --------------------------------------------------------
 # UTILIDADES
 # --------------------------------------------------------
 def clean_text(text: str) -> str:
@@ -127,7 +122,7 @@ PROMPTS = {
 # --------------------------------------------------------
 # INICIALIZAR SESIÓN
 # --------------------------------------------------------
- def ensure_session(user):
+def ensure_session(user):
     if user not in sessions:
         sessions[user] = {
             "lang": "es",
@@ -144,7 +139,7 @@ PROMPTS = {
                 "data": None,
                 "ts": 0
             },
-            "model": "llama"  # <--- aquí inicializas el modelo por defecto
+            "model": "llama"  # modelo por defecto
         }
 
 # --------------------------------------------------------
@@ -647,6 +642,7 @@ def chat():
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
