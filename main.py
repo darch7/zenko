@@ -339,7 +339,10 @@ def chat():
     m = msg.lower().strip()
 
     ensure_session(user)
-
+if "@zenko funciones" in m or "zenko que puedes hacer" in m:
+    salida = [f"{cmd}: {desc}" for cmd, desc in ZENKO_COMMANDS.items()]
+    return jsonify({"reply": "Zenko puede hacer:\n" + "\n".join(salida)})
+    
     # Detectar cambio de idioma @zenko <code>
     if m.startswith("@zenko "):
         maybe = m.replace("@zenko ", "").strip()
@@ -356,11 +359,6 @@ def chat():
         sessions[user]["lsl_mode"] = False
         agregar_historial(user, "Modo LSL desactivado")
         return jsonify({"reply": "Modo LSL desactivado."})
-
-    # ¿Qué puede hacer?
-if "@zenko funciones" in m or "zenko que puedes hacer" in m:
-    salida = [f"{cmd}: {desc}" for cmd, desc in ZENKO_COMMANDS.items()]
-    return jsonify({"reply": "Zenko puede hacer:\n" + "\n".join(salida)})
 
     # MEMORIA: recordatorios
     if m.startswith("@zenko recuerda"):
@@ -644,6 +642,7 @@ def home():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
 
 
