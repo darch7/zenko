@@ -594,18 +594,17 @@ def chat():
 if reply == "Comando no reconocido":
     modelo = sessions[user].get("model", "llama")  # Llama por defecto
 
-    # Forzar chat libre a usar Llama, aunque DeepSeek esté activo
+    # Para preguntas abiertas, hacemos que DeepSeek se comporte como Llama
     if modelo == "deepseek":
         modelo = "llama"
 
     try:
-        if modelo == "llama":
-            headers = {
-                "Authorization": f"Bearer {GROQ_API_KEY}",
-                "Content-Type": "application/json"
-            }
-            api_url = "https://api.groq.com/openai/v1/chat/completions"
-            model_name = LLAMA_MODEL
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        api_url = "https://api.groq.com/openai/v1/chat/completions"
+        model_name = LLAMA_MODEL
 
         payload = {
             "model": model_name,
@@ -626,15 +625,15 @@ if reply == "Comando no reconocido":
     except Exception as e:
         reply = f"Error al generar respuesta: {str(e)}"
 
-    # <-- Este return DEBE estar aquí, dentro del if y de la función chat()
+    # Este return SIEMPRE dentro de chat()
     return jsonify({"reply": reply})
-
 
 # --------------------------------------------------------
 # RUN SERVER
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
