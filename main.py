@@ -360,14 +360,14 @@ def chat():
 
     ensure_session(user)
 
-if "@zenko funciones" in m or "zenko que puedes hacer" in m:
-    salida = [f"{cmd}: {desc}" for cmd, desc in ZENKO_COMMANDS.items()]
-    texto = "Zenko puede hacer:\n" + "\n".join(salida)
-    return Response(
-        json.dumps({"reply": texto}, ensure_ascii=False),
-        mimetype="application/json"
-    )
-    
+    if "@zenko funciones" in m or "zenko que puedes hacer" in m:
+        salida = [f"{cmd}: {desc}" for cmd, desc in ZENKO_COMMANDS.items()]
+        texto = "Zenko puede hacer:\n" + "\n".join(salida)
+        return Response(
+            json.dumps({"reply": texto}, ensure_ascii=False),
+            mimetype="application/json"
+        )
+
     # Detectar cambio de idioma @zenko <code>
     if m.startswith("@zenko "):
         maybe = m.replace("@zenko ", "").strip()
@@ -667,6 +667,7 @@ def home():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
 
 
