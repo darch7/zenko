@@ -594,7 +594,7 @@ def chat():
 if reply == "Comando no reconocido":
     modelo = sessions[user].get("model", "llama")  # Llama por defecto
 
-    # forzar que chat libre use Llama, incluso si user eligió DeepSeek
+    # Forzar chat libre a usar Llama, aunque DeepSeek esté activo
     if modelo == "deepseek":
         modelo = "llama"
 
@@ -626,13 +626,16 @@ if reply == "Comando no reconocido":
     except Exception as e:
         reply = f"Error al generar respuesta: {str(e)}"
 
+    # <-- Este return DEBE estar aquí, dentro del if y de la función chat()
     return jsonify({"reply": reply})
+
 
 # --------------------------------------------------------
 # RUN SERVER
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
