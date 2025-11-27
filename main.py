@@ -6,6 +6,30 @@ import feedparser
 import time
 import difflib
 
+ZENKO_COMMANDS = {
+    "@zenko funciones": "Muestra esta lista de comandos disponibles.",
+    "@zenko recuerda <clave>: <valor>": "Guardar un recordatorio con clave y valor.",
+    "@zenko que <clave>": "Consultar un recordatorio guardado por su clave.",
+    "@zenko guarda nota: <texto>": "Guardar una nota con texto libre.",
+    "@zenko mostrar notas": "Mostrar todas las notas guardadas.",
+    "@zenko añade tarea: <tarea>": "Agregar una tarea a la lista de tareas.",
+    "@zenko lista tareas": "Listar todas las tareas guardadas.",
+    "@zenko completa tarea <id>": "Marcar una tarea como completa usando su ID.",
+    "@zenko clima <ciudad>": "Obtener el clima actual de la ciudad indicada.",
+    "@zenko noticias": "Obtener las últimas noticias desde el RSS configurado.",
+    "@zenko eventos": "Obtener los próximos eventos desde el RSS configurado.",
+    "@zenko busca <término>": "Buscar información en la web (DeepSeek -> Firecrawl fallback).",
+    "@zenko define <término>": "Obtener resumen de Wikipedia del término indicado.",
+    "@zenko wikipedia <término>": "Obtener resumen de Wikipedia del término indicado.",
+    "@zenko snippet <tipo>": "Generar un snippet LSL según el tipo indicado.",
+    "@zenko historial": "Mostrar historial reciente de acciones del usuario.",
+    "@zenko lista scripts": "Listar todos los scripts guardados por el usuario.",
+    "@zenko ver script <id>": "Mostrar el contenido de un script guardado por ID.",
+    "@zenko guarda script": "Guardar un script enviado para referencia futura.",
+    "@zenko lsl on": "Activar el modo LSL para análisis y reescritura de scripts.",
+    "@zenko lsl off": "Desactivar el modo LSL."
+}
+
 app = Flask(__name__)
 
 # Config (usa variables de entorno)
@@ -334,20 +358,9 @@ def chat():
         return jsonify({"reply": "Modo LSL desactivado."})
 
     # ¿Qué puede hacer?
-    if "@zenko funciones" in m or "zenko que puedes hacer" in m:
-        funciones = [
-            "Programación LSL: reescribir, analizar, optimizar, comparar",
-            "Guardar/listar/ver scripts por usuario",
-            "Memoria personal: recordatorios, notas, tareas",
-            "RSS de noticias y eventos",
-            "Clima real por ciudad",
-            "Búsqueda web (DeepSeek -> Firecrawl fallback)",
-            "Wikipedia / definiciones",
-            "Snippets LSL",
-            "Historial consultable",
-            "Contexto / continuar trabajo"
-        ]
-        return jsonify({"reply": "Funciones:\n" + "\n".join(funciones)})
+if "@zenko funciones" in m or "zenko que puedes hacer" in m:
+    salida = [f"{cmd}: {desc}" for cmd, desc in ZENKO_COMMANDS.items()]
+    return jsonify({"reply": "Zenko puede hacer:\n" + "\n".join(salida)})
 
     # MEMORIA: recordatorios
     if m.startswith("@zenko recuerda"):
@@ -631,6 +644,7 @@ def home():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
 
 
