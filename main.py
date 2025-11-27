@@ -419,24 +419,22 @@ def chat():
         salida = []
         for cmd, desc in ZENKO_COMMANDS.items():
             salida.append(f"{clean_text(cmd)}: {clean_text(desc)}")
-
         texto = "Zenko puede hacer:\n" + "\n".join(salida)
-
         return Response(
             json.dumps({"reply": texto}, ensure_ascii=False),
             mimetype="application/json"
         )
-        
+
     reply = "Comando no reconocido"
-    # --------------------------------------------------------
-    # Detectar cambio de idioma @zenko <code>
+
+    # Cambiar idioma
     if m.startswith("@zenko "):
         maybe = m.replace("@zenko ", "").strip()
         if maybe in ["es","en","fr","it"]:
             sessions[user]["lang"] = maybe
             return jsonify({"reply": f"Idioma cambiado a {maybe}."})
 
-    # Comandos LSL ON/OFF
+    # LSL ON/OFF
     if m == "@zenko lsl on":
         sessions[user]["lsl_mode"] = True
         agregar_historial(user, "Modo LSL activado")
@@ -446,7 +444,7 @@ def chat():
         agregar_historial(user, "Modo LSL desactivado")
         return jsonify({"reply": "Modo LSL desactivado."})
 
-    # MEMORIA: recordatorios
+    # Recordatorios
     if m.startswith("@zenko recuerda"):
         try:
             rest = raw_msg.split("recuerda",1)[1]
@@ -460,7 +458,6 @@ def chat():
             return jsonify({"reply": "Formato incorrecto. Usa: @zenko recuerda <clave>: <valor>"})
 
     if m.startswith("@zenko que"):
-        # ej: @zenko que color es mi favorito?
         try:
             clave = raw_msg.split("que",1)[1].strip().replace("?", "")
             clave = clean_text(clave)
@@ -511,13 +508,13 @@ def chat():
         agregar_historial(user, "Tarea completada", tid)
         return jsonify({"reply": f"Tarea {tid} completada."})
 
-    # HISTORIAL
+    # Historial
     if m.startswith("@zenko historial"):
         return jsonify({"reply": historial_resumen(user)})
 
-# NOTICIAS
-if "zenko noticias" in m:
-    return jsonify({"reply": obtener_noticias_gnews()})
+    # NOTICIAS (Nueva API)
+    if "zenko noticias" in m:
+        return jsonify({"reply": obtener_noticias_gnews()})
 
     # CLIMA
     if m.startswith("@zenko clima"):
@@ -526,15 +523,13 @@ if "zenko noticias" in m:
             return jsonify({"reply": "Indica la ciudad: @zenko clima <ciudad>"})
         return jsonify({"reply": obtener_clima(ciudad)})
 
-    # BUSQUEDA
+    # BÚSQUEDA
     if m.startswith("@zenko busca"):
         termino = raw_msg.split("busca",1)[1].strip()
         res = web_search_fallback(termino)
         if not res:
             return jsonify({"reply": f"No encontré resultados para '{termino}'."})
-        out = []
-        for r in res:
-            out.append(f"{r['title']}: {r['url']}")
+        out = [f"{r['title']}: {r['url']}" for r in res]
         return jsonify({"reply": "\n".join(out)})
 
     # WIKIPEDIA / DEFINE
@@ -576,6 +571,7 @@ if "zenko noticias" in m:
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
