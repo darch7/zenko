@@ -407,7 +407,6 @@ def obtener_noticias_gnews():
 # --------------------------------------------------------
 # COMANDOS Y RUTAS Y CHATS
 # --------------------------------------------------------
-@app.route("/chat", methods=["POST"])
 def chat():
     data = request.json or {}
     user = data.get("user", "anon")
@@ -588,51 +587,52 @@ def chat():
     
         return jsonify({"reply": "Modelos disponibles: llama | deepseek"})
 
-# -------------------------------
-# Mensajes normales / preguntas abiertas
-# -------------------------------
-if reply == "Comando no reconocido":
-    modelo = sessions[user].get("model", "llama")  # Llama por defecto
 
-    # Para preguntas abiertas, hacemos que DeepSeek se comporte como Llama
-    if modelo == "deepseek":
-        modelo = "llama"
+    # -------------------------------
+    # Mensajes normales / preguntas abiertas
+    # -------------------------------
+    if reply == "Comando no reconocido":
+        modelo = sessions[user].get("model", "llama")  # Llama por defecto
 
-    try:
-        headers = {
-            "Authorization": f"Bearer {GROQ_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        api_url = "https://api.groq.com/openai/v1/chat/completions"
-        model_name = LLAMA_MODEL
+        # Hacemos que DeepSeek se comporte como Llama
+        if modelo == "deepseek":
+            modelo = "llama"
 
-        payload = {
-            "model": model_name,
-            "messages": [
-                {"role": "system", "content": PROMPTS[sessions[user]["lang"]]},
-                {"role": "user", "content": msg}
-            ]
-        }
+        try:
+            headers = {
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            api_url = "https://api.groq.com/openai/v1/chat/completions"
+            model_name = LLAMA_MODEL
 
-        r = requests.post(api_url, headers=headers, json=payload, timeout=10)
+            payload = {
+                "model": model_name,
+                "messages": [
+                    {"role": "system", "content": PROMPTS[sessions[user]["lang"]]},
+                    {"role": "user", "content": msg}
+                ]
+            }
 
-        if r.ok:
-            data = r.json()
-            reply = clean_text(data["choices"][0]["message"]["content"])
-        else:
-            reply = "Error al generar respuesta desde el modelo."
+            r = requests.post(api_url, headers=headers, json=payload, timeout=10)
 
-    except Exception as e:
-        reply = f"Error al generar respuesta: {str(e)}"
+            if r.ok:
+                data = r.json()
+                reply = clean_text(data["choices"][0]["message"]["content"])
+            else:
+                reply = "Error al generar respuesta desde el modelo."
 
-    # Este return SIEMPRE dentro de chat()
-    return jsonify({"reply": reply})
+        except Exception as e:
+            reply = f"Error al generar respuesta: {str(e)}"
+
+        return jsonify({"reply": reply})
 
 # --------------------------------------------------------
 # RUN SERVER
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
