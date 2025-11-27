@@ -313,8 +313,10 @@ def web_search_fallback(term):
             data = r.json()
             results = data.get("data", [])
             if results:
+                # Aplicamos clean_text a cada título
                 return [
-                    {"title": x.get("title",""), "url": x.get("url","")}
+                    {"title": clean_text(x.get("title","")),
+                     "url": x.get("url","")}
                     for x in results
                 ]
     except Exception as e:
@@ -629,3 +631,4 @@ def chat():
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
