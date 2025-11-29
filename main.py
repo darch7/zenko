@@ -95,10 +95,10 @@ def clean_text(text: str) -> str:
         "°": "",
         
         # Comillas curvas
-        "‘": "",
-        "’": "",
-        "“": "",
-        "”": ""
+        "\u2018": "",
+        "\u2019": "",
+        "\u201C": "",
+        "\u201D": ""
 
     }
 
@@ -684,6 +684,7 @@ def chat():
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
