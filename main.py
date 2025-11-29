@@ -414,7 +414,7 @@ def obtener_noticias_infobae(max_items=10):
     try:
         r = requests.get(INFOBAE_FEED, timeout=5)
         r.raise_for_status()
-        r.encoding = 'utf-8'  # forzar UTF-8
+        r.encoding = 'utf-8'
         soup = BeautifulSoup(r.text, "xml")
 
         items = soup.find_all("item")
@@ -423,9 +423,11 @@ def obtener_noticias_infobae(max_items=10):
 
         salida = []
         for item in items[:max_items]:
-            title = item.title.text.strip() if item.title else "Sin título"
+            title = item.title.text.strip() if item.title else "Sin titulo"
             link = item.link.text.strip() if item.link else ""
-            salida.append(f"- {title}: {link}")
+            # Limpiamos el texto para eliminar tildes y caracteres especiales
+            title_clean = clean_text(title)
+            salida.append(f"- {title_clean}: {link}")
 
         return "\n".join(salida)
 
@@ -667,6 +669,7 @@ def chat():
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
