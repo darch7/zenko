@@ -605,8 +605,11 @@ def chat():
         
     #RSS INFOBAE
     if msg.startswith("@zenko news"):
-        reply = obtener_noticias_infobae(max_items=5)
-        return jsonify({"reply": reply})
+        reply = obtener_noticias_infobae(max_items=10)
+        return Response(
+            json.dumps({"reply": reply}, ensure_ascii=False),
+            mimetype="application/json"
+        )
     
     # --------------------------------------------------------
     # CAMBIO DE MODELO
