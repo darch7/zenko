@@ -43,7 +43,7 @@ DEEPSEEK_MODEL = "deepseek-chat"
 
 MODEL = "llama-3.1-8b-instant"
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
-GNEWS_API_KEY = os.getenv("GNEWS_API_KEY")
+NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 
 # --------------------------------------------------------
 # UTILIDADES
@@ -399,27 +399,39 @@ def leer_rss(url):
 # --------------------------------------------------------
 # NOTICIAS USANDO GNEWS API
 # --------------------------------------------------------
-def obtener_noticias_gnews():
-    if not GNEWS_API_KEY:
+def obtener_noticias_newsapi():
+    if not NEWS_API_KEY:
         return "API de noticias no configurada."
-    
-    url = "https://gnews.io/api/v4/top-headlines?lang=es&country=ar&max=5&apikey=" + GNEWS_API_KEY
+
+    url = "https://newsapi.org/v2/top-headlines"
+    params = {
+        "country": "ar",
+        "pageSize": 5,
+        "apiKey": NEWS_API_KEY
+    }
+
     try:
-        r = requests.get(url, timeout=5)
+        r = requests.get(url, params=params, timeout=8)
+
         if not r.ok:
-            return "No pude obtener noticias de GNews."
+            return f"NewsAPI error {r.status_code}: {r.text}"
+
         data = r.json()
         articles = data.get("articles", [])
+
         if not articles:
             return "No hay noticias disponibles."
+
         salida = []
         for a in articles:
-            titulo = a.get("title","Sin título")
-            url_n = a.get("url","")
+            titulo = a.get("title", "Sin título")
+            url_n = a.get("url", "")
             salida.append(f"- {titulo}: {url_n}")
+
         return "\n".join(salida)
+
     except Exception as e:
-        return f"Error al consultar noticias: {str(e)}"
+        return f"Error al consultar NewsAPI: {e}"
 
 # --------------------------------------------------------
 # COMANDOS Y RUTAS Y CHATS
@@ -646,6 +658,7 @@ def chat():
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
