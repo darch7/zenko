@@ -8,6 +8,14 @@ import difflib
 import json
 from flask import Response
 
+CATEGORIAS = {
+    "politica": ["gobierno", "presidente", "elecciones", "congreso", "milei"],
+    "economia": ["dólar", "inflación", "mercado", "economía", "impuestos"],
+    "deportes": ["fútbol", "river", "boca", "selección", "mundial"],
+    "tecnologia": ["tecnología", "ia", "internet", "apple", "google"],
+    "internacional": ["estados unidos", "china", "guerra", "israel", "ucrania"]
+}
+
 ZENKO_COMMANDS = {
     "@zenko funciones": "Muestra esta lista de comandos disponibles.",
     "@zenko recuerda <clave>: <valor>": "Guardar un recordatorio con clave y valor.",
@@ -384,16 +392,32 @@ def obtener_clima(ciudad):
 # --------------------------------------------------------
 # RSS (Infobae / SeraphimSL)
 # --------------------------------------------------------
-RSS_NEWS = "https://www.infobae.com/argentina-footer/infobae/rss/"
-RSS_EVENTS = "https://www.seraphimsl.com/feed/"
-
-def leer_rss(url):
+def obtener_noticias_infobae_categoria(cat=None, max_items=3):
+    url = "https://www.infobae.com/argentina-footer/infobae/rss/"
     feed = feedparser.parse(url)
+
     if not feed.entries:
-        return "No hay resultados."
+        return "No hay noticias disponibles."
+
     salida = []
-    for item in feed.entries[:5]:
-        salida.append(f"- {clean_text(item.title)}")
+
+    for e in feed.entries:
+        titulo = e.get("title", "").lower()
+        link = e.get("link", "")
+
+        if cat:
+            claves = CATEGORIAS.get(cat, [])
+            if not any(p in titulo for p in claves):
+                continue
+
+        salida.append(f"- {e.title}: {link}")
+
+        if len(salida) >= max_items:
+            break
+
+    if not salida:
+        return f"No encontré noticias de {cat}."
+
     return "\n".join(salida)
 
 # --------------------------------------------------------
@@ -552,8 +576,11 @@ def chat():
         return jsonify({"reply": historial_resumen(user)})
 
     # NOTICIAS (Nueva API)
-    if "zenko noticias" in m:
-        return jsonify({"reply": obtener_noticias_gnews()})
+if msg.startswith("@zenko noticias"):
+    partes = msg.split()
+    categoria = partes[2] if len(partes) > 2 else None
+    reply = obtener_noticias_infobae_categoria(categoria, max_items=2)
+    return jsonify({"reply": reply})
 
     # CLIMA
     if m.startswith("@zenko clima"):
@@ -658,6 +685,7 @@ def chat():
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
