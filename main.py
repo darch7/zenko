@@ -384,7 +384,6 @@ def obtener_clima(ciudad):
 # --------------------------------------------------------
 # RSS (SeraphimSL)
 # --------------------------------------------------------
-import feedparser
 
 def obtener_noticias_seraphim(max_items=3):
     url = "https://www.seraphimsl.com/feed/"
@@ -405,7 +404,24 @@ def obtener_noticias_seraphim(max_items=3):
 
     except Exception as e:
         return f"Error al leer SeraphimSL: {e}"
+# --------------------------------------------------------
+# RSS (infobae)
+# --------------------------------------------------------
+INFOBAE_FEED = "https://www.infobae.com/argentina-footer/infobae/rss/"
 
+def obtener_noticias_infobae(max_items=5):
+    feed = feedparser.parse(INFOBAE_FEED)
+    if not feed.entries:
+        return "No hay noticias disponibles de Infobae."
+
+    # Tomar solo los primeros max_items
+    salida = []
+    for entry in feed.entries[:max_items]:
+        title = entry.get("title", "")
+        link = entry.get("link", "")
+        salida.append(f"- {title}: {link}")
+
+    return "\n".join(salida)
 # --------------------------------------------------------
 # COMANDOS Y RUTAS Y CHATS
 # --------------------------------------------------------
@@ -576,7 +592,12 @@ def chat():
     if msg.strip().lower() in ("@zenko event"):
         reply = obtener_noticias_seraphim(max_items=18)
         return jsonify({"reply": reply})
-
+        
+    #RSS INFOBAE
+    if msg.startswith("@zenko news"):
+        reply = obtener_noticias_infobae(max_items=5)
+        return jsonify({"reply": reply})
+    
     # --------------------------------------------------------
     # CAMBIO DE MODELO
     # --------------------------------------------------------
@@ -633,6 +654,7 @@ def chat():
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
