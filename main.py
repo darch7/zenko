@@ -622,7 +622,11 @@ def chat():
         
     #RSS INFOBAE
     if msg.startswith("@zenko news"):
-        return jsonify({"reply": "DEBUG: ENTRE AL COMANDO NEWS"})
+        reply = obtener_noticias_infobae(5)
+        if not reply:
+            reply = "DEBUG: obtener_noticias_infobae devolvio VACIO"
+        return jsonify({"reply": reply})
+
    #if msg.startswith("@zenko news"):
    #     reply = obtener_noticias_infobae(max_items=10)
    #     return Response(
@@ -686,6 +690,7 @@ def chat():
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
