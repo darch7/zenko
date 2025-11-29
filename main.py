@@ -8,14 +8,6 @@ import difflib
 import json
 from flask import Response
 
-CATEGORIAS = {
-    "politica": ["gobierno", "presidente", "elecciones", "congreso", "milei"],
-    "economia": ["dólar", "inflación", "mercado", "economía", "impuestos"],
-    "deportes": ["fútbol", "river", "boca", "selección", "mundial"],
-    "tecnologia": ["tecnología", "ia", "internet", "apple", "google"],
-    "internacional": ["estados unidos", "china", "guerra", "israel", "ucrania"]
-}
-
 ZENKO_COMMANDS = {
     "@zenko funciones": "Muestra esta lista de comandos disponibles.",
     "@zenko recuerda <clave>: <valor>": "Guardar un recordatorio con clave y valor.",
@@ -390,72 +382,29 @@ def obtener_clima(ciudad):
         return f"Error al obtener el clima: {str(e)}"
 
 # --------------------------------------------------------
-# RSS (Infobae / SeraphimSL)
+# RSS (SeraphimSL)
 # --------------------------------------------------------
-def obtener_noticias_infobae_categoria(cat=None, max_items=3):
-    url = "https://www.infobae.com/argentina-footer/infobae/rss/"
-    feed = feedparser.parse(url)
+import feedparser
 
-    if not feed.entries:
-        return "No hay noticias disponibles."
-
-    salida = []
-
-    for e in feed.entries:
-        titulo = e.get("title", "").lower()
-        link = e.get("link", "")
-
-        if cat:
-            claves = CATEGORIAS.get(cat, [])
-            if not any(p in titulo for p in claves):
-                continue
-
-        salida.append(f"- {e.title}: {link}")
-
-        if len(salida) >= max_items:
-            break
-
-    if not salida:
-        return f"No encontré noticias de {cat}."
-
-    return "\n".join(salida)
-
-# --------------------------------------------------------
-# NOTICIAS USANDO GNEWS API
-# --------------------------------------------------------
-def obtener_noticias_newsapi():
-    if not NEWS_API_KEY:
-        return "API de noticias no configurada."
-
-    url = "https://newsapi.org/v2/top-headlines"
-    params = {
-        "country": "ar",
-        "pageSize": 5,
-        "apiKey": NEWS_API_KEY
-    }
+def obtener_noticias_seraphim(max_items=3):
+    url = "https://www.seraphimsl.com/feed/"
 
     try:
-        r = requests.get(url, params=params, timeout=8)
+        feed = feedparser.parse(url)
 
-        if not r.ok:
-            return f"NewsAPI error {r.status_code}: {r.text}"
-
-        data = r.json()
-        articles = data.get("articles", [])
-
-        if not articles:
-            return "No hay noticias disponibles."
+        if not feed.entries:
+            return "No hay novedades de Second Life en este momento."
 
         salida = []
-        for a in articles:
-            titulo = a.get("title", "Sin título")
-            url_n = a.get("url", "")
-            salida.append(f"- {titulo}: {url_n}")
+        for e in feed.entries[:max_items]:
+            titulo = e.get("title", "Sin título")
+            link = e.get("link", "")
+            salida.append(f"- {titulo}: {link}")
 
         return "\n".join(salida)
 
     except Exception as e:
-        return f"Error al consultar NewsAPI: {e}"
+        return f"Error al leer SeraphimSL: {e}"
 
 # --------------------------------------------------------
 # COMANDOS Y RUTAS Y CHATS
@@ -575,13 +524,6 @@ def chat():
     if m.startswith("@zenko historial"):
         return jsonify({"reply": historial_resumen(user)})
 
-    # NOTICIAS (Nueva API)
-if msg.startswith("@zenko noticias"):
-    partes = msg.split()
-    categoria = partes[2] if len(partes) > 2 else None
-    reply = obtener_noticias_infobae_categoria(categoria, max_items=2)
-    return jsonify({"reply": reply})
-
     # CLIMA
     if m.startswith("@zenko clima"):
         ciudad = raw_msg.split("clima", 1)[1].strip()
@@ -629,6 +571,12 @@ if msg.startswith("@zenko noticias"):
         if not s:
             return jsonify({"reply": f"No encuentro script {sid}"})
         return jsonify({"reply": s})
+    
+    #RSS SERAPHIM
+    if msg.strip().lower() in ("@zenko sl", "@zenko secondlife", "@zenko novedades"):
+    reply = obtener_noticias_seraphim(max_items=2)
+    return jsonify({"reply": reply})
+
     # --------------------------------------------------------
     # CAMBIO DE MODELO
     # --------------------------------------------------------
@@ -685,6 +633,7 @@ if msg.startswith("@zenko noticias"):
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
