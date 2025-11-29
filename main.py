@@ -574,8 +574,8 @@ def chat():
     
     #RSS SERAPHIM
     if msg.strip().lower() in ("@zenko sl", "@zenko secondlife", "@zenko novedades"):
-    reply = obtener_noticias_seraphim(max_items=2)
-    return jsonify({"reply": reply})
+        reply = obtener_noticias_seraphim(max_items=2)
+        return jsonify({"reply": reply})
 
     # --------------------------------------------------------
     # CAMBIO DE MODELO
@@ -633,6 +633,7 @@ def chat():
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
