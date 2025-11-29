@@ -7,6 +7,7 @@ import time
 import difflib
 import json
 from flask import Response
+from bs4 import BeautifulSoup
 
 ZENKO_COMMANDS = {
     "@zenko funciones": "Muestra esta lista de comandos disponibles.",
@@ -407,21 +408,30 @@ def obtener_noticias_seraphim(max_items=3):
 # --------------------------------------------------------
 # RSS (infobae)
 # --------------------------------------------------------
-INFOBAE_FEED = "https://www.infobae.com/argentina-footer/infobae/rss/"
+
+INFOBAE_FEED = "https://www.infobae.com/arc/outboundfeeds/rss/"
 
 def obtener_noticias_infobae(max_items=5):
-    feed = feedparser.parse(INFOBAE_FEED)
-    if not feed.entries:
-        return "No hay noticias disponibles de Infobae."
+    try:
+        r = requests.get(INFOBAE_FEED, timeout=5)
+        r.raise_for_status()
+        soup = BeautifulSoup(r.content, "xml")
 
-    # Tomar solo los primeros max_items
-    salida = []
-    for entry in feed.entries[:max_items]:
-        title = entry.get("title", "")
-        link = entry.get("link", "")
-        salida.append(f"- {title}: {link}")
+        items = soup.find_all("item")
+        if not items:
+            return "No hay noticias disponibles de Infobae."
 
-    return "\n".join(salida)
+        salida = []
+        for item in items[:max_items]:
+            title = item.title.text if item.title else "Sin título"
+            link = item.link.text if item.link else ""
+            salida.append(f"- {title}: {link}")
+
+        return "\n".join(salida)
+
+    except Exception as e:
+        return f"Error al consultar noticias de Infobae: {str(e)}"
+
 # --------------------------------------------------------
 # COMANDOS Y RUTAS Y CHATS
 # --------------------------------------------------------
@@ -654,6 +664,7 @@ def chat():
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
