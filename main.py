@@ -410,7 +410,7 @@ def obtener_noticias_seraphim(max_items=3):
 # --------------------------------------------------------
 INFOBAE_FEED = "https://www.infobae.com/arc/outboundfeeds/rss/"
 
-def obtener_noticias_infobae(max_items=10):
+def obtener_noticias_infobae(max_items=5):
     try:
         r = requests.get(INFOBAE_FEED, timeout=5)
         r.raise_for_status()
@@ -422,13 +422,21 @@ def obtener_noticias_infobae(max_items=10):
             return "No hay noticias disponibles de Infobae."
 
         salida = []
-        for item in items[:max_items]:
-            title = item.title.text.strip() if item.title else "Sin titulo"
-            link = item.link.text.strip() if item.link else ""
-            # Limpiamos el texto para eliminar tildes y caracteres especiales
-            title_clean = clean_text(title)
-            salida.append(f"- {title_clean}: {link}")
+        count = 0
+        for item in items:
+            if count >= max_items:
+                break
+            try:
+                title = str(item.title.text) if item.title else "Sin titulo"
+                link = str(item.link.text) if item.link else ""
+                title_clean = clean_text(title)
+                salida.append(f"- {title_clean}: {link}")
+                count += 1
+            except Exception:
+                continue  # saltar cualquier ítem con error
 
+        if not salida:
+            return "No hay noticias disponibles de Infobae."
         return "\n".join(salida)
 
     except Exception as e:
@@ -607,7 +615,7 @@ def chat():
         
     #RSS INFOBAE
     if msg.startswith("@zenko news"):
-        reply = obtener_noticias_infobae(max_items=10)
+        reply = obtener_noticias_infobae(max_items=5)
         return Response(
             json.dumps({"reply": reply}, ensure_ascii=False),
             mimetype="application/json"
@@ -669,6 +677,7 @@ def chat():
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
