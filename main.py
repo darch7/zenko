@@ -408,14 +408,14 @@ def obtener_noticias_seraphim(max_items=3):
 # --------------------------------------------------------
 # RSS (infobae)
 # --------------------------------------------------------
-
 INFOBAE_FEED = "https://www.infobae.com/arc/outboundfeeds/rss/"
 
-def obtener_noticias_infobae(max_items=5):
+def obtener_noticias_infobae(max_items=10):
     try:
         r = requests.get(INFOBAE_FEED, timeout=5)
         r.raise_for_status()
-        soup = BeautifulSoup(r.content, "xml")
+        r.encoding = 'utf-8'  # forzar UTF-8
+        soup = BeautifulSoup(r.text, "xml")
 
         items = soup.find_all("item")
         if not items:
@@ -423,8 +423,8 @@ def obtener_noticias_infobae(max_items=5):
 
         salida = []
         for item in items[:max_items]:
-            title = item.title.text if item.title else "Sin título"
-            link = item.link.text if item.link else ""
+            title = item.title.text.strip() if item.title else "Sin título"
+            link = item.link.text.strip() if item.link else ""
             salida.append(f"- {title}: {link}")
 
         return "\n".join(salida)
@@ -664,6 +664,7 @@ def chat():
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
