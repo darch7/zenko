@@ -11,13 +11,6 @@ from bs4 import BeautifulSoup
 
 ZENKO_COMMANDS = {
     "@zenko funciones": "Muestra esta lista de comandos disponibles.",
-    "@zenko recuerda <clave>: <valor>": "Guardar un recordatorio con clave y valor.",
-    "@zenko que <clave>": "Consultar un recordatorio guardado por su clave.",
-    "@zenko guarda nota: <texto>": "Guardar una nota con texto libre.",
-    "@zenko mostrar notas": "Mostrar todas las notas guardadas.",
-    "@zenko añade tarea: <tarea>": "Agregar una tarea a la lista de tareas.",
-    "@zenko lista tareas": "Listar todas las tareas guardadas.",
-    "@zenko completa tarea <id>": "Marcar una tarea como completa usando su ID.",
     "@zenko clima <ciudad>": "Obtener el clima actual de la ciudad indicada.",
     "@zenko noticias": "Obtener las últimas noticias desde el RSS configurado.",
     "@zenko eventos": "Obtener los próximos eventos desde el RSS configurado.",
@@ -154,11 +147,6 @@ def ensure_session(user):
             "history": [],
             "lsl_mode": False,
             "scripts": {},
-            "memoria": {
-                "recordatorios": {},
-                "notas": {},
-                "tareas": {}
-            },
             "contexto": {
                 "tipo": None,
                 "data": None,
@@ -499,70 +487,6 @@ def chat():
         agregar_historial(user, "Modo LSL desactivado")
         return jsonify({"reply": "Modo LSL desactivado."})
 
-    # Recordatorios
-    if m.startswith("@zenko recuerda"):
-        try:
-            rest = raw_msg.split("recuerda",1)[1]
-            clave, valor = rest.split(":",1)
-            clave = clean_text(clave)
-            valor = clean_text(valor)
-            sessions[user]["memoria"]["recordatorios"][clave] = valor
-            agregar_historial(user, f"Recordatorio guardado: {clave}")
-            return jsonify({"reply": f"Recordatorio guardado: {clave}"})
-        except Exception:
-            return jsonify({"reply": "Formato incorrecto. Usa: @zenko recuerda <clave>: <valor>"})
-
-    if m.startswith("@zenko que"):
-        try:
-            clave = raw_msg.split("que",1)[1].strip().replace("?", "")
-            clave = clean_text(clave)
-            valor = sessions[user]["memoria"]["recordatorios"].get(clave, "No recuerdo eso.")
-            return jsonify({"reply": valor})
-        except Exception:
-            return jsonify({"reply": "No pude recuperar ese recordatorio."})
-
-    # Notas
-    if m.startswith("@zenko guarda nota:"):
-        texto = raw_msg.split("nota:",1)[1].strip()
-        sid = str(now_ts())
-        sessions[user]["memoria"]["notas"][sid] = clean_text(texto)
-        agregar_historial(user, "Nota guardada", sid)
-        return jsonify({"reply": f"Nota guardada con ID {sid}"})
-
-    if m.startswith("@zenko mostrar notas"):
-        notas = sessions[user]["memoria"]["notas"]
-        if not notas:
-            return jsonify({"reply": "No tienes notas guardadas."})
-        out = "\n".join([f"{k}: {v}" for k,v in notas.items()])
-        return jsonify({"reply": out})
-
-    # Tareas
-    if m.startswith("@zenko añade tarea:"):
-        texto = raw_msg.split("tarea:",1)[1].strip()
-        tid = str(now_ts())
-        sessions[user]["memoria"]["tareas"][tid] = {"tarea": clean_text(texto), "completa": False}
-        agregar_historial(user, "Tarea añadida", tid)
-        return jsonify({"reply": f"Tarea añadida con ID {tid}"})
-
-    if m.startswith("@zenko lista tareas"):
-        tareas = sessions[user]["memoria"]["tareas"]
-        if not tareas:
-            return jsonify({"reply": "No tienes tareas."})
-        out = []
-        for tid, tdata in tareas.items():
-            estado = "✅" if tdata["completa"] else "❌"
-            out.append(f"{tid}: {tdata['tarea']} {estado}")
-        return jsonify({"reply": "\n".join(out)})
-
-    if m.startswith("@zenko completa tarea"):
-        tid = raw_msg.split("tarea",1)[1].strip()
-        tarea = sessions[user]["memoria"]["tareas"].get(tid)
-        if not tarea:
-            return jsonify({"reply": f"No encuentro tarea {tid}"})
-        tarea["completa"] = True
-        agregar_historial(user, "Tarea completada", tid)
-        return jsonify({"reply": f"Tarea {tid} completada."})
-
     # Historial
     if m.startswith("@zenko historial"):
         return jsonify({"reply": historial_resumen(user)})
@@ -683,33 +607,3 @@ def chat():
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
