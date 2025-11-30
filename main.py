@@ -470,7 +470,7 @@ def chat():
         return jsonify({"reply": "Modelo cambiado a Llama."})
     if m.startswith("@zenko deepseek"):
         sessions[user]["model"] = "deepseek"
-        return jsonify({"reply": "Modelo cambiado a DeepSeek (respuestas directas)."})
+        return jsonify({"reply": "Modelo cambiado a DeepSeek"})
     
     # --------------------------------------------------------
     # FUNCIONES
@@ -683,6 +683,7 @@ def chat():
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
