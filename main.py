@@ -597,7 +597,7 @@ if m.startswith("@zenko funciones") or m.startswith("@zenko functions") or m.sta
     cmds = get_zenko_commands(user)
     salida = [f"{cmd}: {desc}" for cmd, desc in cmds.items()]
     texto = "Zenko puede hacer:\n" + "\n".join(salida)
-    return Response(json.dumps({"reply": texto}, ensure_ascii=False), mimetype="application/json")
+return Response(json.dumps({"reply": texto}, ensure_ascii=False), mimetype="application/json")
 
 
     # --------------------------------------------------------
@@ -778,4 +778,5 @@ if m.startswith("@zenko funciones") or m.startswith("@zenko functions") or m.sta
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
