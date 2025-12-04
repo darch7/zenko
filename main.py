@@ -9,22 +9,83 @@ import json
 from flask import Response
 from bs4 import BeautifulSoup
 
-ZENKO_COMMANDS = {
-    "@zenko funciones": "Muestra esta lista de comandos disponibles.",
-    "@zenko clima <ciudad>": "Obtener el clima actual de la ciudad indicada.",
-    "@zenko noticias": "Obtener las últimas noticias desde el RSS configurado.",
-    "@zenko eventos": "Obtener los próximos eventos desde el RSS configurado.",
-    "@zenko busca <término>": "Buscar información en la web (DeepSeek -> Firecrawl fallback).",
-    "@zenko define <término>": "Obtener resumen de Wikipedia del término indicado.",
-    "@zenko wikipedia <término>": "Obtener resumen de Wikipedia del término indicado.",
-    "@zenko snippet <tipo>": "Generar un snippet LSL según el tipo indicado.",
-    "@zenko historial": "Mostrar historial reciente de acciones del usuario.",
-    "@zenko lista scripts": "Listar todos los scripts guardados por el usuario.",
-    "@zenko ver script <id>": "Mostrar el contenido de un script guardado por ID.",
-    "@zenko guarda script": "Guardar un script enviado para referencia futura.",
-    "@zenko lsl on": "Activar el modo LSL para análisis y reescritura de scripts.",
-    "@zenko lsl off": "Desactivar el modo LSL."
+# --------------------------------------------------------
+# COMANDOS ZENKO MULTILINGÜE
+# --------------------------------------------------------
+ZENKO_COMMANDS_MULTI = {
+    "es": {
+        "@zenko funciones": "Muestra esta lista de comandos disponibles.",
+        "@zenko clima <ciudad>": "Obtener el clima actual de la ciudad indicada.",
+        "@zenko noticias": "Obtener las últimas noticias desde el RSS configurado.",
+        "@zenko eventos": "Obtener los próximos eventos desde el RSS configurado.",
+        "@zenko busca <término>": "Buscar información en la web (DeepSeek -> Firecrawl fallback).",
+        "@zenko definicion <término>": "Obtener resumen de Wikipedia del término indicado.",
+        "@zenko wikipedia <término>": "Obtener resumen de Wikipedia del término indicado.",
+        "@zenko snippet <tipo>": "Generar un snippet LSL según el tipo indicado.",
+        "@zenko historial": "Mostrar historial reciente de acciones del usuario.",
+        "@zenko lista scripts": "Listar todos los scripts guardados por el usuario.",
+        "@zenko ver script <id>": "Mostrar el contenido de un script guardado por ID.",
+        "@zenko guarda script": "Guardar un script enviado para referencia futura.",
+        "@zenko lsl on": "Activar el modo LSL para análisis y reescritura de scripts.",
+        "@zenko lsl off": "Desactivar el modo LSL."
+    },
+    "en": {
+        "@zenko functions": "Shows this list of available commands.",
+        "@zenko weather <city>": "Get the current weather of the indicated city.",
+        "@zenko news": "Get the latest news from the configured RSS.",
+        "@zenko events": "Get upcoming events from the configured RSS.",
+        "@zenko search <term>": "Search information on the web (DeepSeek -> Firecrawl fallback).",
+        "@zenko definition <term>": "Get Wikipedia summary of the indicated term.",
+        "@zenko wikipedia <term>": "Get Wikipedia summary of the indicated term.",
+        "@zenko snippet <type>": "Generate an LSL snippet of the indicated type.",
+        "@zenko history": "Show recent user actions history.",
+        "@zenko list scripts": "List all scripts saved by the user.",
+        "@zenko view script <id>": "Show content of a saved script by ID.",
+        "@zenko save script": "Save a submitted script for future reference.",
+        "@zenko lsl on": "Enable LSL mode for analysis and rewriting.",
+        "@zenko lsl off": "Disable LSL mode."
+    },
+    "fr": {
+        "@zenko fonctions": "Montre la liste des commandes disponibles.",
+        "@zenko météo <ville>": "Obtenir la météo actuelle de la ville indiquée.",
+        "@zenko actualités": "Obtenir les dernières nouvelles depuis le flux RSS configuré.",
+        "@zenko événements": "Obtenir les prochains événements depuis le flux RSS.",
+        "@zenko chercher <terme>": "Rechercher des informations sur le web (DeepSeek -> Firecrawl fallback).",
+        "@zenko définition <terme>": "Obtenir le résumé Wikipedia du terme indiqué.",
+        "@zenko wikipedia <terme>": "Obtenir le résumé Wikipedia du terme indiqué.",
+        "@zenko snippet <type>": "Générer un snippet LSL du type indiqué.",
+        "@zenko historique": "Afficher l'historique récent des actions de l'utilisateur.",
+        "@zenko lister scripts": "Lister tous les scripts sauvegardés par l'utilisateur.",
+        "@zenko voir script <id>": "Afficher le contenu d'un script sauvegardé par ID.",
+        "@zenko sauvegarder script": "Sauvegarder un script pour référence future.",
+        "@zenko lsl on": "Activer le mode LSL pour l'analyse et la réécriture.",
+        "@zenko lsl off": "Désactiver le mode LSL."
+    },
+    "it": {
+        "@zenko funzioni": "Mostra l'elenco dei comandi disponibili.",
+        "@zenko meteo <città>": "Ottieni il meteo attuale della città indicata.",
+        "@zenko notizie": "Ottieni le ultime notizie dal feed RSS configurato.",
+        "@zenko eventi": "Ottieni i prossimi eventi dal feed RSS configurato.",
+        "@zenko cerca <termine>": "Cerca informazioni sul web (DeepSeek -> Firecrawl fallback).",
+        "@zenko definizione <termine>": "Ottieni il riepilogo Wikipedia del termine indicato.",
+        "@zenko wikipedia <termine>": "Ottieni il riepilogo Wikipedia del termine indicato.",
+        "@zenko snippet <tipo>": "Genera uno snippet LSL del tipo indicato.",
+        "@zenko cronologia": "Mostra la cronologia recente delle azioni dell'utente.",
+        "@zenko lista script": "Elenca tutti gli script salvati dall'utente.",
+        "@zenko vedi script <id>": "Mostra il contenuto di uno script salvato per ID.",
+        "@zenko salva script": "Salva uno script inviato per riferimento futuro.",
+        "@zenko lsl on": "Attiva la modalità LSL per analisi e riscrittura.",
+        "@zenko lsl off": "Disattiva la modalità LSL."
+    }
 }
+
+# --------------------------------------------------------
+# FUNCION AUXILIAR PARA OBTENER COMANDOS SEGÚN IDIOMA
+# --------------------------------------------------------
+def get_zenko_commands(user):
+    ensure_session(user)
+    lang = sessions[user].get("lang", "es")
+    return ZENKO_COMMANDS_MULTI.get(lang, ZENKO_COMMANDS_MULTI["es"])
 
 app = Flask(__name__)
 
@@ -532,14 +593,12 @@ def chat():
     # --------------------------------------------------------
     # FUNCIONES (MULTIIDIOMA)
     # --------------------------------------------------------
-    if cmd == "funciones":
-        # Mostrar los aliases principales en el idioma activo
-        salida = []
-        for k in COMMAND_ALIASES.get(lang, {}):
-            aliases = COMMAND_ALIASES[lang][k]
-            salida.append(f"@zenko {aliases[0]}")
-        texto = "Zenko puede hacer:\n" + "\n".join(salida)
-        return Response(json.dumps({"reply": texto}, ensure_ascii=False), mimetype="application/json")
+if m.startswith("@zenko funciones") or m.startswith("@zenko functions") or m.startswith("@zenko fonctions") or m.startswith("@zenko funzioni"):
+    cmds = get_zenko_commands(user)
+    salida = [f"{cmd}: {desc}" for cmd, desc in cmds.items()]
+    texto = "Zenko puede hacer:\n" + "\n".join(salida)
+    return Response(json.dumps({"reply": texto}, ensure_ascii=False), mimetype="application/json")
+
 
     # --------------------------------------------------------
     # CAMBIO DE IDIOMA (mantengo tu forma original)
@@ -719,3 +778,4 @@ def chat():
 # --------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
