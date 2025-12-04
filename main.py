@@ -438,6 +438,71 @@ def obtener_noticias_infobae(max_items=5):
         return f"Error al consultar noticias de Infobae: {str(e)}"
 
 # --------------------------------------------------------
+# COMMAND ALIASES
+# --------------------------------------------------------
+
+COMMAND_ALIASES = {
+    "es": {
+        "funciones": ["funciones"],
+        "clima": ["clima"],
+        "busca": ["busca"],
+        "define": ["define", "wikipedia"],
+        "snippet": ["snippet"],
+        "historial": ["historial"],
+        "eventos": ["event"],
+        "noticias": ["news"],
+    },
+    "en": {
+        "funciones": ["help"],
+        "clima": ["weather"],
+        "busca": ["search"],
+        "define": ["define", "wiki"],
+        "snippet": ["snippet"],
+        "historial": ["history"],
+        "eventos": ["events"],
+        "noticias": ["news"],
+    },
+    "fr": {
+        "funciones": ["aide"],
+        "clima": ["meteo"],
+        "busca": ["chercher"],
+        "define": ["definir", "wiki"],
+        "snippet": ["extrait"],
+        "historial": ["historique"],
+        "eventos": ["evenements"],
+        "noticias": ["actualites"],
+    },
+    "it": {
+        "funciones": ["aiuto"],
+        "clima": ["meteo"],
+        "busca": ["cerca"],
+        "define": ["definisci", "wiki"],
+        "snippet": ["snippet"],
+        "historial": ["storico"],
+        "eventos": ["eventi"],
+        "noticias": ["notizie"],
+    }
+}
+
+# --------------------------------------------------------
+# DETECCIÓN DE COMANDOS MULTIIDIOMA
+# --------------------------------------------------------
+def detectar_comando(msg, lang):
+    msg = msg.lower().strip()
+    if not msg.startswith("@zenko"):
+        return None, None
+
+    resto = msg.replace("@zenko", "", 1).strip()
+
+    for cmd, aliases in COMMAND_ALIASES.get(lang, {}).items():
+        for a in aliases:
+            if resto.startswith(a):
+                args = resto[len(a):].strip()
+                return cmd, args
+
+    return None, None
+    
+# --------------------------------------------------------
 # COMANDOS Y RUTAS Y CHATS
 # --------------------------------------------------------
 @app.route("/chat", methods=["POST"])
@@ -449,6 +514,10 @@ def chat():
     m = msg.lower().strip()
 
     ensure_session(user)
+    # <<< AÑADIDO: resolver lenguaje y comando multilingüe, en paralelo a los if antiguos >>>
+    lang = sessions[user]["lang"]
+    cmd, args = detectar_comando(raw_msg, lang)  # uso raw_msg para preservar argumentos originales
+
     reply = "Comando no reconocido"
     modelo = sessions[user].get("model", "llama")  # llama por defecto
 
@@ -461,15 +530,19 @@ def chat():
         return jsonify({"reply": "Modelo cambiado a DeepSeek"})
     
     # --------------------------------------------------------
-    # FUNCIONES
+    # FUNCIONES (MULTIIDIOMA)
     # --------------------------------------------------------
-    if m.startswith("@zenko funciones") or m.startswith("zenko que puedes hacer"):
-        salida = [f"{clean_text(cmd)}: {clean_text(desc)}" for cmd, desc in ZENKO_COMMANDS.items()]
+    if cmd == "funciones":
+        # Mostrar los aliases principales en el idioma activo
+        salida = []
+        for k in COMMAND_ALIASES.get(lang, {}):
+            aliases = COMMAND_ALIASES[lang][k]
+            salida.append(f"@zenko {aliases[0]}")
         texto = "Zenko puede hacer:\n" + "\n".join(salida)
         return Response(json.dumps({"reply": texto}, ensure_ascii=False), mimetype="application/json")
 
     # --------------------------------------------------------
-    # CAMBIO DE IDIOMA
+    # CAMBIO DE IDIOMA (mantengo tu forma original)
     # --------------------------------------------------------
     if m.startswith("@zenko "):
         maybe = m.replace("@zenko ", "").strip()
@@ -487,18 +560,33 @@ def chat():
         agregar_historial(user, "Modo LSL desactivado")
         return jsonify({"reply": "Modo LSL desactivado."})
 
-    # Historial
-    if m.startswith("@zenko historial"):
+    # Historial (multilenguaje fallback handled via cmd)
+    if m.startswith("@zenko historial") or cmd == "historial":
         return jsonify({"reply": historial_resumen(user)})
 
-    # CLIMA
+    # CLIMA (MULTIIDIOMA)
+    if cmd == "clima":
+        if not args:
+            return jsonify({"reply": "Indica la ciudad: @zenko clima <ciudad>"})
+        return jsonify({"reply": obtener_clima(args)})
+
+    # CLIMA (compatibilidad con el if clásico)
     if m.startswith("@zenko clima"):
         ciudad = raw_msg.split("clima", 1)[1].strip()
         if not ciudad:
             return jsonify({"reply": "Indica la ciudad: @zenko clima <ciudad>"})
         return jsonify({"reply": obtener_clima(ciudad)})
 
-    # BÚSQUEDA
+    # BÚSQUEDA (MULTIIDIOMA)
+    if cmd == "busca":
+        termino = args
+        res = web_search_fallback(termino)
+        if not res:
+            return jsonify({"reply": f"No encontré resultados para '{termino}'."})
+        out = [f"{r['title']}: {r['url']}" for r in res]
+        return jsonify({"reply": "\n".join(out)})
+
+    # BÚSQUEDA (compatibilidad)
     if m.startswith("@zenko busca"):
         termino = raw_msg.split("busca",1)[1].strip()
         res = web_search_fallback(termino)
@@ -507,12 +595,29 @@ def chat():
         out = [f"{r['title']}: {r['url']}" for r in res]
         return jsonify({"reply": "\n".join(out)})
 
-    # WIKIPEDIA / DEFINE
-    if m.startswith("@zenko define") or m.startswith("@zenko wikipedia"):
-        term = raw_msg.split(" ",2)[2].strip()
+    # WIKIPEDIA / DEFINE (MULTIIDIOMA)
+    if cmd == "define":
+        term = args
         return jsonify({"reply": wiki_summary(term)})
 
-    # SNIPPETS
+    # WIKIPEDIA / DEFINE (compatibilidad)
+    if m.startswith("@zenko define") or m.startswith("@zenko wikipedia"):
+        # intento extraer término con la misma lógica previa
+        parts = raw_msg.split(" ",2)
+        if len(parts) < 3:
+            return jsonify({"reply": "Indica el término: @zenko define <término>"})
+        term = parts[2].strip()
+        return jsonify({"reply": wiki_summary(term)})
+
+    # SNIPPETS (MULTIIDIOMA)
+    if cmd == "snippet":
+        tipo = args
+        s = LSL_SNIPPETS.get(tipo)
+        if not s:
+            return jsonify({"reply": f"No tengo snippet del tipo '{tipo}'."})
+        return jsonify({"reply": s})
+
+    # SNIPPETS (compatibilidad)
     if m.startswith("@zenko snippet"):
         tipo = raw_msg.split("snippet",1)[1].strip()
         s = LSL_SNIPPETS.get(tipo)
@@ -521,31 +626,38 @@ def chat():
         return jsonify({"reply": s})
 
     # GUARDAR SCRIPT
-    if m.startswith("@zenko guarda script"):
-        script = raw_msg.split("guarda script",1)[1].strip()
+    if m.startswith("@zenko guarda script") or (cmd == "guarda script"):
+        # compatibilidad: si viene en español clásico extraigo con split; si no, uso args
+        if m.startswith("@zenko guarda script"):
+            script = raw_msg.split("guarda script",1)[1].strip()
+        else:
+            script = args
         sid = guardar_script(user, script)
         return jsonify({"reply": f"Script guardado con ID {sid}"})
 
     # LISTAR SCRIPTS
-    if m.startswith("@zenko lista scripts"):
+    if m.startswith("@zenko lista scripts") or cmd == "lista scripts":
         keys = listar_scripts(user)
         return jsonify({"reply": "Scripts guardados:\n" + "\n".join(keys)})
 
     # VER SCRIPT
-    if m.startswith("@zenko ver script"):
-        sid = raw_msg.split("ver script",1)[1].strip()
+    if m.startswith("@zenko ver script") or cmd == "ver script":
+        if m.startswith("@zenko ver script"):
+            sid = raw_msg.split("ver script",1)[1].strip()
+        else:
+            sid = args
         s = ver_script(user, sid)
         if not s:
             return jsonify({"reply": f"No encuentro script {sid}"})
         return jsonify({"reply": s})
     
-    #RSS SERAPHIM
-    if msg.strip().lower() in ("@zenko event"):
+    #RSS SERAPHIM (compat)
+    if msg.strip().lower() in ("@zenko event",) or cmd == "eventos":
         reply = obtener_noticias_seraphim(max_items=18)
         return jsonify({"reply": reply})
         
-    #RSS INFOBAE
-    if msg.startswith("@zenko news"):
+    #RSS INFOBAE (compat)
+    if msg.startswith("@zenko news") or cmd == "noticias":
         reply = obtener_noticias_infobae(5)
         if not reply:
             reply = "DEBUG: obtener_noticias_infobae devolvio VACIO"
