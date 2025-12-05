@@ -138,7 +138,7 @@ LANGUAGE_CONFIGS = {
         "commands": {
             "@zenko fonctions": "Affiche cette liste de commandes disponibles.",
             "@zenko météo <ville>": "Obtenir la météo actuelle de la ville indiquée.",
-            "@zenko actualités": "Obtenir les dernières actualités depuis le RSS configurado.",
+            "@zenko actualités": "Obtenir les dernières actualités depuis le RSS configuré.",
             "@zenko événements": "Obtenir les prochains événements depuis le RSS.",
             "@zenko recherche <terme>": "Rechercher des informations sur le web (DeepSeek -> Firecrawl fallback).",
             "@zenko définir <terme>": "Obtenir un résumé Wikipédia du terme indiqué.",
@@ -470,7 +470,7 @@ def historial_resumen(user, limite=10):
         return get_response(user, "no_history")
     out = []
     for item in h:
-        t = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(item["ts"]))
+        t = time.strftime("%Y-%m-d %H:%M:%S", time.localtime(item["ts"]))
         out.append(f"{t} — {item['accion']}" + (f" ({item['extra']})" if item.get("extra") else ""))
     return "\n".join(out)
 
@@ -817,7 +817,9 @@ def wiki_summary(term):
         if r.ok:
             data = r.json()
             extract = data.get("extract")
-            return extract or "No encuentro resumen en Wikipedia."
+            if extract:
+                return clean_text(extract)
+            return "No encuentro resumen en Wikipedia."
         else:
             return "No encontré la página en Wikipedia."
     except Exception as e:
@@ -860,7 +862,7 @@ def obtener_noticias_seraphim(max_items=3):
 
         salida = []
         for e in feed.entries[:max_items]:
-            titulo = e.get("title", "Sin título")
+            titulo = clean_text(e.get("title", "Sin título"))
             link = e.get("link", "")
             salida.append(f"- {titulo}: {link}")
 
@@ -909,8 +911,11 @@ def obtener_noticias_infobae(max_items=5):
 # --------------------------------------------------------
 # LLAMADA A API GROQ / DEEPSEEK
 # --------------------------------------------------------
-def call_llama_api(prompt, user):
+def call_llama_api(prompt, user_msg):
     """Llama a la API de Groq/Llama"""
+    if not GROQ_API_KEY:
+        return "API de Groq no configurada."
+    
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json"
@@ -920,7 +925,7 @@ def call_llama_api(prompt, user):
         "model": LLAMA_MODEL,
         "messages": [
             {"role": "system", "content": prompt},
-            {"role": "user", "content": user}
+            {"role": "user", "content": user_msg}
         ],
         "temperature": 0.7,
         "max_tokens": 1000
@@ -936,15 +941,18 @@ def call_llama_api(prompt, user):
         
         if response.status_code == 200:
             result = response.json()
-            return result['choices'][0]['message']['content']
+            return clean_text(result['choices'][0]['message']['content'])
         else:
             return f"Error en la API: {response.status_code} - {response.text}"
             
     except Exception as e:
         return f"Error al conectar con la API: {str(e)}"
 
-def call_deepseek_api(prompt, user):
+def call_deepseek_api(prompt, user_msg):
     """Llama a la API de DeepSeek"""
+    if not DEEPSEEK_API_KEY:
+        return "API de DeepSeek no configurada."
+    
     headers = {
         "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
         "Content-Type": "application/json"
@@ -954,7 +962,7 @@ def call_deepseek_api(prompt, user):
         "model": DEEPSEEK_MODEL,
         "messages": [
             {"role": "system", "content": prompt},
-            {"role": "user", "content": user}
+            {"role": "user", "content": user_msg}
         ],
         "temperature": 0.7,
         "max_tokens": 1000
@@ -970,7 +978,7 @@ def call_deepseek_api(prompt, user):
         
         if response.status_code == 200:
             result = response.json()
-            return result['choices'][0]['message']['content']
+            return clean_text(result['choices'][0]['message']['content'])
         else:
             return f"Error en la API DeepSeek: {response.status_code}"
             
@@ -1015,36 +1023,36 @@ def chat():
         commands = get_commands(user)
         salida = [f"{clean_text(cmd)}: {clean_text(desc)}" for cmd, desc in commands.items()]
         texto = f"{get_response(user, 'commands_list')}\n" + "\n".join(salida)
-        return Response(json.dumps({"reply": texto}, ensure_ascii=False), mimetype="application/json")
+        return Response(json.dumps({"reply": clean_text(texto)}, ensure_ascii=False), mimetype="application/json")
     
     elif command_type == "clima":
         ciudad = extract_command_argument(raw_msg, "clima", user)
         if not ciudad:
-            return jsonify({"reply": get_response(user, "no_city")})
-        return jsonify({"reply": obtener_clima(ciudad)})
+            return jsonify({"reply": clean_text(get_response(user, "no_city"))})
+        return jsonify({"reply": clean_text(obtener_clima(ciudad))})
     
     elif command_type == "busca":
         termino = extract_command_argument(raw_msg, "busca", user)
         if not termino:
-            return jsonify({"reply": get_response(user, "no_search_term")})
+            return jsonify({"reply": clean_text(get_response(user, "no_search_term"))})
         res = web_search_fallback(termino)
         if not res:
-            return jsonify({"reply": get_response(user, "no_results", termino)})
+            return jsonify({"reply": clean_text(get_response(user, "no_results", termino))})
         out = [f"{r['title']}: {r['url']}" for r in res]
-        return jsonify({"reply": f"{get_response(user, 'search_results')}\n" + "\n".join(out)})
+        return jsonify({"reply": clean_text(f"{get_response(user, 'search_results')}\n" + "\n".join(out))})
     
     elif command_type in ["define", "wikipedia"]:
         term = extract_command_argument(raw_msg, "define", user)
         if not term:
-            return jsonify({"reply": get_response(user, "no_wiki_term")})
-        return jsonify({"reply": wiki_summary(term)})
+            return jsonify({"reply": clean_text(get_response(user, "no_wiki_term"))})
+        return jsonify({"reply": clean_text(wiki_summary(term))})
     
     elif command_type == "snippet":
         tipo = extract_command_argument(raw_msg, "snippet", user)
         s = LSL_SNIPPETS.get(tipo)
         if not s:
-            return jsonify({"reply": get_response(user, "no_snippet_type", tipo)})
-        return jsonify({"reply": s})
+            return jsonify({"reply": clean_text(get_response(user, "no_snippet_type", tipo))})
+        return jsonify({"reply": s})  # Los snippets no necesitan clean_text
     
     elif command_type == "guarda script":
         # Extraer script del mensaje
@@ -1053,45 +1061,45 @@ def chat():
             script = parts[1].strip()
             if script:
                 sid = guardar_script(user, script)
-                return jsonify({"reply": get_response(user, "script_saved", sid)})
-        return jsonify({"reply": "Envía el script después del comando."})
+                return jsonify({"reply": clean_text(get_response(user, "script_saved", sid))})
+        return jsonify({"reply": clean_text("Envía el script después del comando.")})
     
     elif command_type == "lista scripts":
         keys = listar_scripts(user)
         if not keys:
-            return jsonify({"reply": get_response(user, "no_scripts")})
-        return jsonify({"reply": f"{get_response(user, 'scripts_list')}\n" + "\n".join(keys)})
+            return jsonify({"reply": clean_text(get_response(user, "no_scripts"))})
+        return jsonify({"reply": clean_text(f"{get_response(user, 'scripts_list')}\n" + "\n".join(keys))})
     
     elif command_type == "ver script":
         sid = extract_command_argument(raw_msg, "ver script", user)
         s = ver_script(user, sid)
         if not s:
-            return jsonify({"reply": get_response(user, "script_not_found", sid)})
-        return jsonify({"reply": s})
+            return jsonify({"reply": clean_text(get_response(user, "script_not_found", sid))})
+        return jsonify({"reply": s})  # Los scripts ya tienen clean_text al guardarse
     
     elif command_type == "historial":
-        return jsonify({"reply": historial_resumen(user)})
+        return jsonify({"reply": clean_text(historial_resumen(user))})
     
     elif command_type == "lsl_on":
         sessions[user]["lsl_mode"] = True
         agregar_historial(user, "Modo LSL activado")
-        return jsonify({"reply": get_response(user, "lsl_on")})
+        return jsonify({"reply": clean_text(get_response(user, "lsl_on"))})
     
     elif command_type == "lsl_off":
         sessions[user]["lsl_mode"] = False
         agregar_historial(user, "Modo LSL desactivado")
-        return jsonify({"reply": get_response(user, "lsl_off")})
+        return jsonify({"reply": clean_text(get_response(user, "lsl_off"))})
     
     # COMANDOS ESPECIALES (RSS) - mantienen nombres en español pero funcionan en todos idiomas
     if msg.strip().lower() in ("@zenko event", "@zenko eventos"):
         reply = obtener_noticias_seraphim(max_items=18)
-        return jsonify({"reply": reply})
+        return jsonify({"reply": clean_text(reply)})
         
     if msg.startswith("@zenko news") or msg.startswith("@zenko noticias"):
         reply = obtener_noticias_infobae(5)
         if not reply:
             reply = "DEBUG: obtener_noticias_infobae devolvio VACIO"
-        return jsonify({"reply": reply})
+        return jsonify({"reply": clean_text(reply)})
     
     # -------------------------------
     # Mensajes normales / preguntas abiertas
@@ -1117,7 +1125,7 @@ def chat():
         except Exception as e:
             reply = f"Error procesando tu mensaje: {str(e)}"
 
-    return jsonify({"reply": reply})
+    return jsonify({"reply": clean_text(reply)})
 
 # --------------------------------------------------------
 # RUTA DE ESTADO
