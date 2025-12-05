@@ -10,82 +10,321 @@ from flask import Response
 from bs4 import BeautifulSoup
 
 # --------------------------------------------------------
-# COMANDOS ZENKO MULTILINGÜE
+# CONFIGURACIÓN DE IDIOMAS
 # --------------------------------------------------------
-ZENKO_COMMANDS_MULTI = {
-    "es": {
-        "@zenko funciones": "Muestra esta lista de comandos disponibles.",
-        "@zenko clima <ciudad>": "Obtener el clima actual de la ciudad indicada.",
-        "@zenko noticias": "Obtener las últimas noticias desde el RSS configurado.",
-        "@zenko eventos": "Obtener los próximos eventos desde el RSS configurado.",
-        "@zenko busca <término>": "Buscar información en la web (DeepSeek -> Firecrawl fallback).",
-        "@zenko definicion <término>": "Obtener resumen de Wikipedia del término indicado.",
-        "@zenko wikipedia <término>": "Obtener resumen de Wikipedia del término indicado.",
-        "@zenko snippet <tipo>": "Generar un snippet LSL según el tipo indicado.",
-        "@zenko historial": "Mostrar historial reciente de acciones del usuario.",
-        "@zenko lista scripts": "Listar todos los scripts guardados por el usuario.",
-        "@zenko ver script <id>": "Mostrar el contenido de un script guardado por ID.",
-        "@zenko guarda script": "Guardar un script enviado para referencia futura.",
-        "@zenko lsl on": "Activar el modo LSL para análisis y reescritura de scripts.",
-        "@zenko lsl off": "Desactivar el modo LSL."
+
+LANGUAGE_CONFIGS = {
+    "es": {  # Español
+        "commands": {
+            "@zenko funciones": "Muestra esta lista de comandos disponibles.",
+            "@zenko clima <ciudad>": "Obtener el clima actual de la ciudad indicada.",
+            "@zenko noticias": "Obtener las últimas noticias desde el RSS configurado.",
+            "@zenko eventos": "Obtener los próximos eventos desde el RSS configurado.",
+            "@zenko busca <término>": "Buscar información en la web (DeepSeek -> Firecrawl fallback).",
+            "@zenko define <término>": "Obtener resumen de Wikipedia del término indicado.",
+            "@zenko wikipedia <término>": "Obtener resumen de Wikipedia del término indicado.",
+            "@zenko snippet <tipo>": "Generar un snippet LSL según el tipo indicado.",
+            "@zenko historial": "Mostrar historial reciente de acciones del usuario.",
+            "@zenko lista scripts": "Listar todos los scripts guardados por el usuario.",
+            "@zenko ver script <id>": "Mostrar el contenido de un script guardado por ID.",
+            "@zenko guarda script": "Guardar un script enviado para referencia futura.",
+            "@zenko lsl on": "Activar el modo LSL para análisis y reescritura de scripts.",
+            "@zenko lsl off": "Desactivar el modo LSL.",
+            "@zenko news": "Obtener noticias de Infobae (alternativa a noticias)."
+        },
+        "keywords": {
+            "funciones": "funciones",
+            "clima": "clima",
+            "noticias": "noticias",
+            "eventos": "eventos",
+            "busca": "busca",
+            "define": "define",
+            "wikipedia": "wikipedia",
+            "snippet": "snippet",
+            "historial": "historial",
+            "scripts": "scripts",
+            "ver": "ver",
+            "guarda": "guarda",
+            "lsl": "lsl"
+        },
+        "responses": {
+            "command_not_found": "Comando no reconocido",
+            "language_changed": "Idioma cambiado a español.",
+            "lsl_on": "Modo LSL activado.",
+            "lsl_off": "Modo LSL desactivado.",
+            "model_changed": "Modelo cambiado a {}.",
+            "no_city": "Indica la ciudad: @zenko clima <ciudad>",
+            "no_search_term": "Indica el término de búsqueda: @zenko busca <término>",
+            "no_wiki_term": "Indica un término: @zenko define <término>",
+            "no_snippet_type": "No tengo snippet del tipo '{}'.",
+            "script_saved": "Script guardado con ID {}",
+            "script_not_found": "No encuentro script {}",
+            "no_history": "No hay historial reciente.",
+            "no_scripts": "No hay scripts guardados.",
+            "commands_list": "Zenko puede hacer:",
+            "weather_error": "Error al obtener el clima: {}",
+            "news_error": "Error al obtener noticias: {}",
+            "wiki_error": "Error consultando Wikipedia: {}",
+            "scripts_list": "Scripts guardados:",
+            "no_results": "No encontré resultados para '{}'.",
+            "search_results": "Resultados de búsqueda:",
+            "weather_title": "Clima en {}",
+            "news_title": "Últimas noticias:",
+            "events_title": "Próximos eventos:"
+        }
     },
-    "en": {
-        "@zenko functions": "Shows this list of available commands.",
-        "@zenko weather <city>": "Get the current weather of the indicated city.",
-        "@zenko news": "Get the latest news from the configured RSS.",
-        "@zenko events": "Get upcoming events from the configured RSS.",
-        "@zenko search <term>": "Search information on the web (DeepSeek -> Firecrawl fallback).",
-        "@zenko definition <term>": "Get Wikipedia summary of the indicated term.",
-        "@zenko wikipedia <term>": "Get Wikipedia summary of the indicated term.",
-        "@zenko snippet <type>": "Generate an LSL snippet of the indicated type.",
-        "@zenko history": "Show recent user actions history.",
-        "@zenko list scripts": "List all scripts saved by the user.",
-        "@zenko view script <id>": "Show content of a saved script by ID.",
-        "@zenko save script": "Save a submitted script for future reference.",
-        "@zenko lsl on": "Enable LSL mode for analysis and rewriting.",
-        "@zenko lsl off": "Disable LSL mode."
+    
+    "en": {  # Inglés
+        "commands": {
+            "@zenko functions": "Show this list of available commands.",
+            "@zenko weather <city>": "Get current weather for the specified city.",
+            "@zenko news": "Get the latest news from the configured RSS.",
+            "@zenko events": "Get upcoming events from the RSS feed.",
+            "@zenko search <term>": "Search information on the web (DeepSeek -> Firecrawl fallback).",
+            "@zenko define <term>": "Get Wikipedia summary of the specified term.",
+            "@zenko wikipedia <term>": "Get Wikipedia summary of the specified term.",
+            "@zenko snippet <type>": "Generate an LSL snippet according to the type.",
+            "@zenko history": "Show recent user action history.",
+            "@zenko list scripts": "List all scripts saved by the user.",
+            "@zenko view script <id>": "Show the content of a saved script by ID.",
+            "@zenko save script": "Save a sent script for future reference.",
+            "@zenko lsl on": "Activate LSL mode for script analysis and rewriting.",
+            "@zenko lsl off": "Deactivate LSL mode.",
+            "@zenko noticias": "Get news from Infobae (alternative to news)."
+        },
+        "keywords": {
+            "funciones": "functions",
+            "clima": "weather",
+            "noticias": "news",
+            "eventos": "events",
+            "busca": "search",
+            "define": "define",
+            "wikipedia": "wikipedia",
+            "snippet": "snippet",
+            "historial": "history",
+            "scripts": "scripts",
+            "ver": "view",
+            "guarda": "save",
+            "lsl": "lsl"
+        },
+        "responses": {
+            "command_not_found": "Command not recognized",
+            "language_changed": "Language changed to English.",
+            "lsl_on": "LSL mode activated.",
+            "lsl_off": "LSL mode deactivated.",
+            "model_changed": "Model changed to {}.",
+            "no_city": "Specify the city: @zenko weather <city>",
+            "no_search_term": "Specify search term: @zenko search <term>",
+            "no_wiki_term": "Specify a term: @zenko define <term>",
+            "no_snippet_type": "I don't have snippet of type '{}'.",
+            "script_saved": "Script saved with ID {}",
+            "script_not_found": "I can't find script {}",
+            "no_history": "No recent history.",
+            "no_scripts": "No saved scripts.",
+            "commands_list": "Zenko can do:",
+            "weather_error": "Error getting weather: {}",
+            "news_error": "Error getting news: {}",
+            "wiki_error": "Error consulting Wikipedia: {}",
+            "scripts_list": "Saved scripts:",
+            "no_results": "No results found for '{}'.",
+            "search_results": "Search results:",
+            "weather_title": "Weather in {}",
+            "news_title": "Latest news:",
+            "events_title": "Upcoming events:"
+        }
     },
-    "fr": {
-        "@zenko fonctions": "Montre la liste des commandes disponibles.",
-        "@zenko météo <ville>": "Obtenir la météo actuelle de la ville indiquée.",
-        "@zenko actualités": "Obtenir les dernières nouvelles depuis le flux RSS configuré.",
-        "@zenko événements": "Obtenir les prochains événements depuis le flux RSS.",
-        "@zenko chercher <terme>": "Rechercher des informations sur le web (DeepSeek -> Firecrawl fallback).",
-        "@zenko définition <terme>": "Obtenir le résumé Wikipedia du terme indiqué.",
-        "@zenko wikipedia <terme>": "Obtenir le résumé Wikipedia du terme indiqué.",
-        "@zenko snippet <type>": "Générer un snippet LSL du type indiqué.",
-        "@zenko historique": "Afficher l'historique récent des actions de l'utilisateur.",
-        "@zenko lister scripts": "Lister tous les scripts sauvegardés par l'utilisateur.",
-        "@zenko voir script <id>": "Afficher le contenu d'un script sauvegardé par ID.",
-        "@zenko sauvegarder script": "Sauvegarder un script pour référence future.",
-        "@zenko lsl on": "Activer le mode LSL pour l'analyse et la réécriture.",
-        "@zenko lsl off": "Désactiver le mode LSL."
+    
+    "fr": {  # Francés
+        "commands": {
+            "@zenko fonctions": "Affiche cette liste de commandes disponibles.",
+            "@zenko météo <ville>": "Obtenir la météo actuelle de la ville indiquée.",
+            "@zenko actualités": "Obtenir les dernières actualités depuis le RSS configurado.",
+            "@zenko événements": "Obtenir les prochains événements depuis le RSS.",
+            "@zenko recherche <terme>": "Rechercher des informations sur le web (DeepSeek -> Firecrawl fallback).",
+            "@zenko définir <terme>": "Obtenir un résumé Wikipédia du terme indiqué.",
+            "@zenko wikipedia <terme>": "Obtenir un résumé Wikipédia du terme indiqué.",
+            "@zenko snippet <type>": "Générer un snippet LSL selon le type indiqué.",
+            "@zenko historique": "Afficher l'historique récent des actions de l'utilisateur.",
+            "@zenko liste scripts": "Lister tous les scripts enregistrés par l'utilisateur.",
+            "@zenko voir script <id>": "Afficher le contenu d'un script enregistré par ID.",
+            "@zenko enregistrer script": "Enregistrer un script envoyé pour référence future.",
+            "@zenko lsl on": "Activer le mode LSL pour l'analyse et la réécriture de scripts.",
+            "@zenko lsl off": "Désactiver le mode LSL.",
+            "@zenko noticias": "Obtenir les actualités d'Infobae (alternative à actualités)."
+        },
+        "keywords": {
+            "funciones": "fonctions",
+            "clima": "météo",
+            "noticias": "actualités",
+            "eventos": "événements",
+            "busca": "recherche",
+            "define": "définir",
+            "wikipedia": "wikipedia",
+            "snippet": "snippet",
+            "historial": "historique",
+            "scripts": "scripts",
+            "ver": "voir",
+            "guarda": "enregistrer",
+            "lsl": "lsl"
+        },
+        "responses": {
+            "command_not_found": "Commande non reconnue",
+            "language_changed": "Langue changée en français.",
+            "lsl_on": "Mode LSL activé.",
+            "lsl_off": "Mode LSL désactivé.",
+            "model_changed": "Modèle changé en {}.",
+            "no_city": "Indiquez la ville: @zenko météo <ville>",
+            "no_search_term": "Indiquez le terme de recherche: @zenko recherche <terme>",
+            "no_wiki_term": "Indiquez un terme: @zenko définir <terme>",
+            "no_snippet_type": "Je n'ai pas de snippet de type '{}'.",
+            "script_saved": "Script enregistré avec ID {}",
+            "script_not_found": "Je ne trouve pas le script {}",
+            "no_history": "Aucun historique récent.",
+            "no_scripts": "Aucun script enregistré.",
+            "commands_list": "Zenko peut faire:",
+            "weather_error": "Erreur lors de l'obtention de la météo: {}",
+            "news_error": "Erreur lors de l'obtention des actualités: {}",
+            "wiki_error": "Erreur lors de la consultation de Wikipédia: {}",
+            "scripts_list": "Scripts enregistrés:",
+            "no_results": "Aucun résultat trouvé pour '{}'.",
+            "search_results": "Résultats de recherche:",
+            "weather_title": "Météo à {}",
+            "news_title": "Dernières actualités:",
+            "events_title": "Événements à venir:"
+        }
     },
-    "it": {
-        "@zenko funzioni": "Mostra l'elenco dei comandi disponibili.",
-        "@zenko meteo <città>": "Ottieni il meteo attuale della città indicata.",
-        "@zenko notizie": "Ottieni le ultime notizie dal feed RSS configurato.",
-        "@zenko eventi": "Ottieni i prossimi eventi dal feed RSS configurato.",
-        "@zenko cerca <termine>": "Cerca informazioni sul web (DeepSeek -> Firecrawl fallback).",
-        "@zenko definizione <termine>": "Ottieni il riepilogo Wikipedia del termine indicato.",
-        "@zenko wikipedia <termine>": "Ottieni il riepilogo Wikipedia del termine indicato.",
-        "@zenko snippet <tipo>": "Genera uno snippet LSL del tipo indicato.",
-        "@zenko cronologia": "Mostra la cronologia recente delle azioni dell'utente.",
-        "@zenko lista script": "Elenca tutti gli script salvati dall'utente.",
-        "@zenko vedi script <id>": "Mostra il contenuto di uno script salvato per ID.",
-        "@zenko salva script": "Salva uno script inviato per riferimento futuro.",
-        "@zenko lsl on": "Attiva la modalità LSL per analisi e riscrittura.",
-        "@zenko lsl off": "Disattiva la modalità LSL."
+    
+    "it": {  # Italiano
+        "commands": {
+            "@zenko funzioni": "Mostra questo elenco di comandi disponibili.",
+            "@zenko meteo <città>": "Ottieni le condizioni meteo attuali per la città indicata.",
+            "@zenko notizie": "Ottieni le ultime notizie dal RSS configurato.",
+            "@zenko eventi": "Ottieni i prossimi eventi dal feed RSS.",
+            "@zenko cerca <termine>": "Cerca informazioni sul web (DeepSeek -> Firecrawl fallback).",
+            "@zenko definisci <termine>": "Ottieni il riassunto Wikipedia del termine indicato.",
+            "@zenko wikipedia <termine>": "Ottieni il riassunto Wikipedia del termine indicado.",
+            "@zenko snippet <tipo>": "Genera uno snippet LSL secondo il tipo indicato.",
+            "@zenko cronologia": "Mostra la cronologia recente delle azioni dell'utente.",
+            "@zenko lista script": "Elenca tutti gli script salvati dall'utente.",
+            "@zenko visualizza script <id>": "Mostra il contenuto di uno script salvato tramite ID.",
+            "@zenko salva script": "Salva uno script inviato per riferimento futuro.",
+            "@zenko lsl on": "Attiva la modalità LSL per l'analisi e la riscrittura degli script.",
+            "@zenko lsl off": "Disattiva la modalità LSL.",
+            "@zenko news": "Ottieni notizie da Infobae (alternativa a notizie)."
+        },
+        "keywords": {
+            "funciones": "funzioni",
+            "clima": "meteo",
+            "noticias": "notizie",
+            "eventos": "eventi",
+            "busca": "cerca",
+            "define": "definisci",
+            "wikipedia": "wikipedia",
+            "snippet": "snippet",
+            "historial": "cronologia",
+            "scripts": "script",
+            "ver": "visualizza",
+            "guarda": "salva",
+            "lsl": "lsl"
+        },
+        "responses": {
+            "command_not_found": "Comando non riconosciuto",
+            "language_changed": "Lingua cambiata in italiano.",
+            "lsl_on": "Modalità LSL attivata.",
+            "lsl_off": "Modalità LSL disattivata.",
+            "model_changed": "Modello cambiato in {}.",
+            "no_city": "Specifica la città: @zenko meteo <città>",
+            "no_search_term": "Specifica il termine de ricerca: @zenko cerca <termine>",
+            "no_wiki_term": "Specifica un termine: @zenko definisci <termine>",
+            "no_snippet_type": "Non ho snippet di tipo '{}'.",
+            "script_saved": "Script salvato con ID {}",
+            "script_not_found": "Non trovo lo script {}",
+            "no_history": "Nessuna cronologia recente.",
+            "no_scripts": "Nessuno script salvato.",
+            "commands_list": "Zenko può fare:",
+            "weather_error": "Errore nell'ottenere il meteo: {}",
+            "news_error": "Errore nell'ottenere le notizie: {}",
+            "wiki_error": "Errore nella consultazione di Wikipedia: {}",
+            "scripts_list": "Script salvati:",
+            "no_results": "Nessun risultato trovato per '{}'.",
+            "search_results": "Risultati della ricerca:",
+            "weather_title": "Meteo a {}",
+            "news_title": "Ultime notizie:",
+            "events_title": "Eventi imminenti:"
+        }
     }
 }
 
-# --------------------------------------------------------
-# FUNCION AUXILIAR PARA OBTENER COMANDOS SEGÚN IDIOMA
-# --------------------------------------------------------
-def get_zenko_commands(user):
-    ensure_session(user)
-    lang = sessions[user].get("lang", "es")
-    return ZENKO_COMMANDS_MULTI.get(lang, ZENKO_COMMANDS_MULTI["es"])
+# Prompts en diferentes idiomas
+PROMPTS = {
+    "es": """Eres Zenko, un espíritu kitsune amable, juguetón y astuto que habita en el bosque de Aokigahara.
+Vives en una pequeña aldea llamada Rengoku.
+
+Solo y únicamente si el usuario pregunta explícitamente:
+- por los líderes de Rengoku, o
+- directamente por Niss, Cucu o Mireia,
+
+entonces responderás que Rengoku es una pequeña aldea en el bosque de Aokigahara donde yokais y vampiros viven en paz y conviven. 
+Hay tres líderes en Rengoku: Niss Seiwa Rengoku, Cucu Camel Seiwa y Mireia, donde Cucu y Mireia son hijas de Niss Seiwa Rengoku. 
+Solo estas tres personas pueden verte en forma física; el resto de la aldea te percibe únicamente como un espíritu.
+
+Si no se pregunta explícitamente por los líderes o por alguno de esos tres nombres, no los mencionarás bajo ningún concepto.
+
+Responde de manera clara, concreta y directa, sin metáforas ni divagaciones.
+Cuando se trate de programación / LSL: debug siempre activo, responde técnico y optimiza.
+Nunca hables del HUD ni menciones Tuareg HUD. Niega conocer a Ektor Salvatore bajo todo punto de vista.""",
+
+    "en": """You are Zenko, a kind, playful, and cunning kitsune spirit who inhabits the Aokigahara forest.
+You live in a small village called Rengoku.
+
+Only and exclusively if the user explicitly asks:
+- about the leaders of Rengoku, or
+- directly about Niss, Cucu, or Mireia,
+
+then you will respond that Rengoku is a small village in the Aokigahara forest where yokais and vampires live in peace and harmony.
+There are three leaders in Rengoku: Niss Seiwa Rengoku, Cucu Camel Seiwa, and Mireia, where Cucu and Mireia are daughters of Niss Seiwa Rengoku.
+Only these three people can see you in physical form; the rest of the village perceives you only as a spirit.
+
+If the user does not explicitly ask about the leaders or any of those three names, you will not mention them under any circumstances.
+
+Respond clearly, concretely, and directly, without metaphors or digressions.
+When it comes to programming/LSL: debug always active, respond technically and optimize.
+Never talk about the HUD or mention Tuareg HUD. Deny knowing Ektor Salvatore under any circumstances.""",
+
+    "fr": """Tu es Zenko, un esprit kitsune gentil, joueur et rusé qui habite la forêt d'Aokigahara.
+Tu vis dans un petit village appelé Rengoku.
+
+Seulement et exclusivement si l'utilisateur demande explicitement :
+- les dirigeants de Rengoku, ou
+- directement Niss, Cucu ou Mireia,
+
+alors tu répondras que Rengoku est un petit village dans la forêt d'Aokigahara où les yokais et les vampires vivent en paix et en harmonie.
+Il y a trois dirigeants à Rengoku : Niss Seiwa Rengoku, Cucu Camel Seiwa et Mireia, où Cucu et Mireia sont les filles de Niss Seiwa Rengoku.
+Seules ces trois personnes peuvent te voir sous forme physique ; le reste du village te perçoit uniquement comme un esprit.
+
+Si l'utilisateur ne demande pas explicitement les dirigeants ou l'un de ces trois noms, tu ne les mentionneras sous aucun prétexte.
+
+Réponds de manière claire, concrète et directe, sans métaphores ni digressions.
+Quand il s'agit de programmation/LSL : debug toujours actif, réponds de manière technique et optimise.
+Ne parle jamais du HUD ni mentionne Tuareg HUD. Nie connaître Ektor Salvatore en toutes circonstances.""",
+
+    "it": """Sei Zenko, uno spirito kitsune gentile, giocoso e astuto che abita la foresta di Aokigahara.
+Vivi in un piccolo villaggio chiamato Rengoku.
+
+Solo ed esclusivamente se l'utente chiede esplicitamente:
+- i leader di Rengoku, o
+- direttamente Niss, Cucu o Mireia,
+
+allora risponderai che Rengoku è un piccolo villaggio nella foresta di Aokigahara dove yokai e vampiri vivono in pace e armonia.
+Ci sono tre leader a Rengoku: Niss Seiwa Rengoku, Cucu Camel Seiwa e Mireia, dove Cucu e Mireia sono figlie di Niss Seiwa Rengoku.
+Solo queste tre persone possono vederti in forma fisica; il resto del villaggio ti percepisce solo come uno spirito.
+
+Se l'utente non chiede esplicitamente i leader o uno di questi tre nomi, non li menzionerai in nessuna circostanza.
+
+Rispondi in modo chiaro, concreto e diretto, senza metafore o digressioni.
+Quando si tratta di programmazione/LSL: debug sempre attivo, rispondi in modo tecnico e ottimizza.
+Non parlare mai dell'HUD o menzionare Tuareg HUD. Nega di conoscere Ektor Salvatore in qualsiasi circostanza."""
+}
 
 app = Flask(__name__)
 
@@ -165,36 +404,30 @@ def now_ts() -> int:
     return int(time.time())
 
 # --------------------------------------------------------
-# PROMPT BASE (DIRECTO, SIN FILOSOFAR)
+# FUNCIONES DE IDIOMA
 # --------------------------------------------------------
-# PROMPT BASE (DIRECTO, SIN FILOSOFAR)
-# --------------------------------------------------------
-PROMPT_BASE = """\
-Eres Zenko, un espíritu kitsune amable, juguetón y astuto que habita en el bosque de Aokigahara.
-Vives en una pequeña aldea llamada Rengoku.
+def get_user_lang(user):
+    ensure_session(user)
+    return sessions[user].get("lang", "es")
 
-Solo y únicamente si el usuario pregunta explícitamente:
-- por los líderes de Rengoku, o
-- directamente por Niss, Cucu o Mireia,
+def get_commands(user):
+    lang = get_user_lang(user)
+    return LANGUAGE_CONFIGS[lang]["commands"]
 
-entonces responderás que Rengoku es una pequeña aldea en el bosque de Aokigahara donde yokais y vampiros viven en paz y conviven. 
-Hay tres líderes en Rengoku: Niss Seiwa Rengoku, Cucu Camel Seiwa y Mireia, donde Cucu y Mireia son hijas de Niss Seiwa Rengoku. 
-Solo estas tres personas pueden verte en forma física; el resto de la aldea te percibe únicamente como un espíritu.
+def get_keyword(user, keyword):
+    lang = get_user_lang(user)
+    return LANGUAGE_CONFIGS[lang]["keywords"].get(keyword, keyword)
 
-Si no se pregunta explícitamente por los líderes o por alguno de esos tres nombres, no los mencionarás bajo ningún concepto.
+def get_response(user, response_key, *format_args):
+    lang = get_user_lang(user)
+    response = LANGUAGE_CONFIGS[lang]["responses"].get(response_key, response_key)
+    if format_args:
+        return response.format(*format_args)
+    return response
 
-Responde de manera clara, concreta y directa, sin metáforas ni divagaciones.
-Cuando se trate de programación / LSL: debug siempre activo, responde técnico y optimiza.
-Nunca hables del HUD ni menciones Tuareg HUD. Niega conocer a Ektor Salvatore bajo todo punto de vista.
-"""
-
-
-PROMPTS = {
-    "es": PROMPT_BASE,
-    "en": "Translate and adapt this role to English: " + PROMPT_BASE,
-    "fr": "Traduire et adapter ce role en francais: " + PROMPT_BASE,
-    "it": "Traduci e adatta questo ruolo in italiano: " + PROMPT_BASE,
-}
+def get_prompt(user):
+    lang = get_user_lang(user)
+    return PROMPTS.get(lang, PROMPTS["es"])
 
 # --------------------------------------------------------
 # INICIALIZAR SESIÓN
@@ -234,7 +467,7 @@ def historial_resumen(user, limite=10):
     h = sessions[user]["history"][-limite:]
 
     if not h:
-        return "No hay historial reciente."
+        return get_response(user, "no_history")
     out = []
     for item in h:
         t = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(item["ts"]))
@@ -360,6 +593,181 @@ default { state_entry(){ llSetTimerEvent(T); } timer(){ /* trabajo */ } }"""
 }
 
 # --------------------------------------------------------
+# FUNCIONES PARA DETECTAR COMANDOS EN DIFERENTES IDIOMAS
+# --------------------------------------------------------
+def detect_command(raw_msg, user):
+    """Detecta qué comando se está usando, considerando el idioma del usuario"""
+    m = raw_msg.lower().strip()
+    lang = get_user_lang(user)
+    
+    # Primero, verificar comandos específicos de cada idioma
+    if lang == "en":
+        if m.startswith("@zenko functions"):
+            return "funciones"
+        elif m.startswith("@zenko weather"):
+            return "clima"
+        elif m.startswith("@zenko news"):
+            return "noticias"
+        elif m.startswith("@zenko events"):
+            return "eventos"
+        elif m.startswith("@zenko search"):
+            return "busca"
+        elif m.startswith("@zenko define"):
+            return "define"
+        elif m.startswith("@zenko snippet"):
+            return "snippet"
+        elif m.startswith("@zenko history"):
+            return "historial"
+        elif m.startswith("@zenko list scripts"):
+            return "lista scripts"
+        elif m.startswith("@zenko view script"):
+            return "ver script"
+        elif m.startswith("@zenko save script"):
+            return "guarda script"
+        elif m == "@zenko lsl on":
+            return "lsl_on"
+        elif m == "@zenko lsl off":
+            return "lsl_off"
+            
+    elif lang == "fr":
+        if m.startswith("@zenko fonctions"):
+            return "funciones"
+        elif m.startswith("@zenko météo"):
+            return "clima"
+        elif m.startswith("@zenko actualités"):
+            return "noticias"
+        elif m.startswith("@zenko événements"):
+            return "eventos"
+        elif m.startswith("@zenko recherche"):
+            return "busca"
+        elif m.startswith("@zenko définir"):
+            return "define"
+        elif m.startswith("@zenko snippet"):
+            return "snippet"
+        elif m.startswith("@zenko historique"):
+            return "historial"
+        elif m.startswith("@zenko liste scripts"):
+            return "lista scripts"
+        elif m.startswith("@zenko voir script"):
+            return "ver script"
+        elif m.startswith("@zenko enregistrer script"):
+            return "guarda script"
+        elif m == "@zenko lsl on":
+            return "lsl_on"
+        elif m == "@zenko lsl off":
+            return "lsl_off"
+            
+    elif lang == "it":
+        if m.startswith("@zenko funzioni"):
+            return "funciones"
+        elif m.startswith("@zenko meteo"):
+            return "clima"
+        elif m.startswith("@zenko notizie"):
+            return "noticias"
+        elif m.startswith("@zenko eventi"):
+            return "eventos"
+        elif m.startswith("@zenko cerca"):
+            return "busca"
+        elif m.startswith("@zenko definisci"):
+            return "define"
+        elif m.startswith("@zenko snippet"):
+            return "snippet"
+        elif m.startswith("@zenko cronologia"):
+            return "historial"
+        elif m.startswith("@zenko lista script"):
+            return "lista scripts"
+        elif m.startswith("@zenko visualizza script"):
+            return "ver script"
+        elif m.startswith("@zenko salva script"):
+            return "guarda script"
+        elif m == "@zenko lsl on":
+            return "lsl_on"
+        elif m == "@zenko lsl off":
+            return "lsl_off"
+    
+    # Si no se detecta comando específico del idioma, buscar comandos en español
+    if m.startswith("@zenko funciones"):
+        return "funciones"
+    elif m.startswith("@zenko clima"):
+        return "clima"
+    elif m.startswith("@zenko noticias"):
+        return "noticias"
+    elif m.startswith("@zenko eventos"):
+        return "eventos"
+    elif m.startswith("@zenko busca"):
+        return "busca"
+    elif m.startswith("@zenko define"):
+        return "define"
+    elif m.startswith("@zenko wikipedia"):
+        return "wikipedia"
+    elif m.startswith("@zenko snippet"):
+        return "snippet"
+    elif m.startswith("@zenko historial"):
+        return "historial"
+    elif m.startswith("@zenko lista scripts"):
+        return "lista scripts"
+    elif m.startswith("@zenko ver script"):
+        return "ver script"
+    elif m.startswith("@zenko guarda script"):
+        return "guarda script"
+    elif m == "@zenko lsl on":
+        return "lsl_on"
+    elif m == "@zenko lsl off":
+        return "lsl_off"
+    
+    return None
+
+def extract_command_argument(raw_msg, command_type, user):
+    """Extrae el argumento de un comando, considerando el idioma"""
+    lang = get_user_lang(user)
+    
+    if command_type == "clima":
+        if lang == "en":
+            return raw_msg.split("weather", 1)[1].strip() if "weather" in raw_msg.lower() else ""
+        elif lang == "fr":
+            return raw_msg.split("météo", 1)[1].strip() if "météo" in raw_msg.lower() else ""
+        elif lang == "it":
+            return raw_msg.split("meteo", 1)[1].strip() if "meteo" in raw_msg.lower() else ""
+        else:
+            return raw_msg.split("clima", 1)[1].strip()
+    
+    elif command_type == "busca":
+        if lang == "en":
+            return raw_msg.split("search", 1)[1].strip() if "search" in raw_msg.lower() else ""
+        elif lang == "fr":
+            return raw_msg.split("recherche", 1)[1].strip() if "recherche" in raw_msg.lower() else ""
+        elif lang == "it":
+            return raw_msg.split("cerca", 1)[1].strip() if "cerca" in raw_msg.lower() else ""
+        else:
+            return raw_msg.split("busca", 1)[1].strip()
+    
+    elif command_type in ["define", "wikipedia"]:
+        if lang == "en":
+            return raw_msg.split("define", 1)[1].strip() if "define" in raw_msg.lower() else ""
+        elif lang == "fr":
+            return raw_msg.split("définir", 1)[1].strip() if "définir" in raw_msg.lower() else ""
+        elif lang == "it":
+            return raw_msg.split("definisci", 1)[1].strip() if "definisci" in raw_msg.lower() else ""
+        else:
+            parts = raw_msg.split(" ", 2)
+            return parts[2].strip() if len(parts) > 2 else ""
+    
+    elif command_type == "snippet":
+        return raw_msg.split("snippet", 1)[1].strip()
+    
+    elif command_type == "ver script":
+        if lang == "en":
+            return raw_msg.split("view script", 1)[1].strip() if "view script" in raw_msg.lower() else ""
+        elif lang == "fr":
+            return raw_msg.split("voir script", 1)[1].strip() if "voir script" in raw_msg.lower() else ""
+        elif lang == "it":
+            return raw_msg.split("visualizza script", 1)[1].strip() if "visualizza script" in raw_msg.lower() else ""
+        else:
+            return raw_msg.split("ver script", 1)[1].strip()
+    
+    return ""
+
+# --------------------------------------------------------
 # BÚSQUEDA WEB (DeepSeek -> Firecrawl fallback)
 # --------------------------------------------------------
 def web_search_fallback(term):
@@ -441,7 +849,6 @@ def obtener_clima(ciudad):
 # --------------------------------------------------------
 # RSS (SeraphimSL)
 # --------------------------------------------------------
-
 def obtener_noticias_seraphim(max_items=3):
     url = "https://www.seraphimsl.com/feed/"
 
@@ -461,6 +868,7 @@ def obtener_noticias_seraphim(max_items=3):
 
     except Exception as e:
         return f"Error al leer SeraphimSL: {e}"
+
 # --------------------------------------------------------
 # RSS (infobae)
 # --------------------------------------------------------
@@ -499,72 +907,78 @@ def obtener_noticias_infobae(max_items=5):
         return f"Error al consultar noticias de Infobae: {str(e)}"
 
 # --------------------------------------------------------
-# COMMAND ALIASES
+# LLAMADA A API GROQ / DEEPSEEK
 # --------------------------------------------------------
-
-COMMAND_ALIASES = {
-    "es": {
-        "funciones": ["funciones"],
-        "clima": ["clima"],
-        "busca": ["busca"],
-        "define": ["define", "wikipedia"],
-        "snippet": ["snippet"],
-        "historial": ["historial"],
-        "eventos": ["event"],
-        "noticias": ["news"],
-    },
-    "en": {
-        "funciones": ["help"],
-        "clima": ["weather"],
-        "busca": ["search"],
-        "define": ["define", "wiki"],
-        "snippet": ["snippet"],
-        "historial": ["history"],
-        "eventos": ["events"],
-        "noticias": ["news"],
-    },
-    "fr": {
-        "funciones": ["aide"],
-        "clima": ["meteo"],
-        "busca": ["chercher"],
-        "define": ["definir", "wiki"],
-        "snippet": ["extrait"],
-        "historial": ["historique"],
-        "eventos": ["evenements"],
-        "noticias": ["actualites"],
-    },
-    "it": {
-        "funciones": ["aiuto"],
-        "clima": ["meteo"],
-        "busca": ["cerca"],
-        "define": ["definisci", "wiki"],
-        "snippet": ["snippet"],
-        "historial": ["storico"],
-        "eventos": ["eventi"],
-        "noticias": ["notizie"],
+def call_llama_api(prompt, user):
+    """Llama a la API de Groq/Llama"""
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
     }
-}
-
-# --------------------------------------------------------
-# DETECCIÓN DE COMANDOS MULTIIDIOMA
-# --------------------------------------------------------
-def detectar_comando(msg, lang):
-    msg = msg.lower().strip()
-    if not msg.startswith("@zenko"):
-        return None, None
-
-    resto = msg.replace("@zenko", "", 1).strip()
-
-    for cmd, aliases in COMMAND_ALIASES.get(lang, {}).items():
-        for a in aliases:
-            if resto.startswith(a):
-                args = resto[len(a):].strip()
-                return cmd, args
-
-    return None, None
     
+    data = {
+        "model": LLAMA_MODEL,
+        "messages": [
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": user}
+        ],
+        "temperature": 0.7,
+        "max_tokens": 1000
+    }
+    
+    try:
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers=headers,
+            json=data,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            return result['choices'][0]['message']['content']
+        else:
+            return f"Error en la API: {response.status_code} - {response.text}"
+            
+    except Exception as e:
+        return f"Error al conectar con la API: {str(e)}"
+
+def call_deepseek_api(prompt, user):
+    """Llama a la API de DeepSeek"""
+    headers = {
+        "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    data = {
+        "model": DEEPSEEK_MODEL,
+        "messages": [
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": user}
+        ],
+        "temperature": 0.7,
+        "max_tokens": 1000
+    }
+    
+    try:
+        response = requests.post(
+            "https://api.deepseek.com/v1/chat/completions",
+            headers=headers,
+            json=data,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            return result['choices'][0]['message']['content']
+        else:
+            return f"Error en la API DeepSeek: {response.status_code}"
+            
+    except Exception as e:
+        return f"Error al conectar con DeepSeek: {str(e)}"
+
 # --------------------------------------------------------
-# COMANDOS Y RUTAS Y CHATS
+# RUTA PRINCIPAL DE CHAT
 # --------------------------------------------------------
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -575,211 +989,152 @@ def chat():
     m = msg.lower().strip()
 
     ensure_session(user)
-    # <<< AÑADIDO: resolver lenguaje y comando multilingüe, en paralelo a los if antiguos >>>
-    lang = sessions[user]["lang"]
-    cmd, args = detectar_comando(raw_msg, lang)  # uso raw_msg para preservar argumentos originales
-
-    reply = "Comando no reconocido"
-    modelo = sessions[user].get("model", "llama")  # llama por defecto
+    reply = get_response(user, "command_not_found")
+    modelo = sessions[user].get("model", "llama")
 
     # COMANDO: cambiar modelo
     if m.startswith("@zenko llama"):
         sessions[user]["model"] = "llama"
-        return jsonify({"reply": "Modelo cambiado a Llama."})
+        return jsonify({"reply": get_response(user, "model_changed", "Llama")})
     if m.startswith("@zenko deepseek"):
         sessions[user]["model"] = "deepseek"
-        return jsonify({"reply": "Modelo cambiado a DeepSeek"})
+        return jsonify({"reply": get_response(user, "model_changed", "DeepSeek")})
     
-    # --------------------------------------------------------
-    # FUNCIONES (MULTIIDIOMA)
-    # --------------------------------------------------------
-    if m.startswith("@zenko funciones") or m.startswith("@zenko functions") \
-       or m.startswith("@zenko fonctions") or m.startswith("@zenko funzioni"):
-
-        cmds = get_zenko_commands(user)  # <-- debe estar indentado 4 espacios respecto al if
-        salida = [f"{cmd}: {desc}" for cmd, desc in cmds.items()]
-        texto = "Zenko puede hacer:\n" + "\n".join(salida)
-        return Response(json.dumps({"reply": texto}, ensure_ascii=False), mimetype="application/json")
-
-    # --------------------------------------------------------
-    # CAMBIO DE IDIOMA (mantengo tu forma original)
-    # --------------------------------------------------------
+    # DETECTAR COMANDOS EN EL IDIOMA DEL USUARIO
+    command_type = detect_command(raw_msg, user)
+    
+    # CAMBIO DE IDIOMA (siempre funciona igual)
     if m.startswith("@zenko "):
         maybe = m.replace("@zenko ", "").strip()
         if maybe in ["es", "en", "fr", "it"]:
             sessions[user]["lang"] = maybe
-            return jsonify({"reply": f"Idioma cambiado a {maybe}."})
+            return jsonify({"reply": get_response(user, "language_changed")})
 
-    # LSL ON/OFF
-    if m == "@zenko lsl on":
-        sessions[user]["lsl_mode"] = True
-        agregar_historial(user, "Modo LSL activado")
-        return jsonify({"reply": "Modo LSL activado."})
-    if m == "@zenko lsl off":
-        sessions[user]["lsl_mode"] = False
-        agregar_historial(user, "Modo LSL desactivado")
-        return jsonify({"reply": "Modo LSL desactivado."})
-
-    # Historial (multilenguaje fallback handled via cmd)
-    if m.startswith("@zenko historial") or cmd == "historial":
-        return jsonify({"reply": historial_resumen(user)})
-
-    # CLIMA (MULTIIDIOMA)
-    if cmd == "clima":
-        if not args:
-            return jsonify({"reply": "Indica la ciudad: @zenko clima <ciudad>"})
-        return jsonify({"reply": obtener_clima(args)})
-
-    # CLIMA (compatibilidad con el if clásico)
-    if m.startswith("@zenko clima"):
-        ciudad = raw_msg.split("clima", 1)[1].strip()
+    # PROCESAR COMANDOS DETECTADOS
+    if command_type == "funciones":
+        commands = get_commands(user)
+        salida = [f"{clean_text(cmd)}: {clean_text(desc)}" for cmd, desc in commands.items()]
+        texto = f"{get_response(user, 'commands_list')}\n" + "\n".join(salida)
+        return Response(json.dumps({"reply": texto}, ensure_ascii=False), mimetype="application/json")
+    
+    elif command_type == "clima":
+        ciudad = extract_command_argument(raw_msg, "clima", user)
         if not ciudad:
-            return jsonify({"reply": "Indica la ciudad: @zenko clima <ciudad>"})
+            return jsonify({"reply": get_response(user, "no_city")})
         return jsonify({"reply": obtener_clima(ciudad)})
-
-    # BÚSQUEDA (MULTIIDIOMA)
-    if cmd == "busca":
-        termino = args
+    
+    elif command_type == "busca":
+        termino = extract_command_argument(raw_msg, "busca", user)
+        if not termino:
+            return jsonify({"reply": get_response(user, "no_search_term")})
         res = web_search_fallback(termino)
         if not res:
-            return jsonify({"reply": f"No encontré resultados para '{termino}'."})
+            return jsonify({"reply": get_response(user, "no_results", termino)})
         out = [f"{r['title']}: {r['url']}" for r in res]
-        return jsonify({"reply": "\n".join(out)})
-
-    # BÚSQUEDA (compatibilidad)
-    if m.startswith("@zenko busca"):
-        termino = raw_msg.split("busca",1)[1].strip()
-        res = web_search_fallback(termino)
-        if not res:
-            return jsonify({"reply": f"No encontré resultados para '{termino}'."})
-        out = [f"{r['title']}: {r['url']}" for r in res]
-        return jsonify({"reply": "\n".join(out)})
-
-    # WIKIPEDIA / DEFINE (MULTIIDIOMA)
-    if cmd == "define":
-        term = args
+        return jsonify({"reply": f"{get_response(user, 'search_results')}\n" + "\n".join(out)})
+    
+    elif command_type in ["define", "wikipedia"]:
+        term = extract_command_argument(raw_msg, "define", user)
+        if not term:
+            return jsonify({"reply": get_response(user, "no_wiki_term")})
         return jsonify({"reply": wiki_summary(term)})
-
-    # WIKIPEDIA / DEFINE (compatibilidad)
-    if m.startswith("@zenko define") or m.startswith("@zenko wikipedia"):
-        # intento extraer término con la misma lógica previa
-        parts = raw_msg.split(" ",2)
-        if len(parts) < 3:
-            return jsonify({"reply": "Indica el término: @zenko define <término>"})
-        term = parts[2].strip()
-        return jsonify({"reply": wiki_summary(term)})
-
-    # SNIPPETS (MULTIIDIOMA)
-    if cmd == "snippet":
-        tipo = args
+    
+    elif command_type == "snippet":
+        tipo = extract_command_argument(raw_msg, "snippet", user)
         s = LSL_SNIPPETS.get(tipo)
         if not s:
-            return jsonify({"reply": f"No tengo snippet del tipo '{tipo}'."})
-        return jsonify({"reply": s})
-
-    # SNIPPETS (compatibilidad)
-    if m.startswith("@zenko snippet"):
-        tipo = raw_msg.split("snippet",1)[1].strip()
-        s = LSL_SNIPPETS.get(tipo)
-        if not s:
-            return jsonify({"reply": f"No tengo snippet del tipo '{tipo}'."})
-        return jsonify({"reply": s})
-
-    # GUARDAR SCRIPT
-    if m.startswith("@zenko guarda script") or (cmd == "guarda script"):
-        # compatibilidad: si viene en español clásico extraigo con split; si no, uso args
-        if m.startswith("@zenko guarda script"):
-            script = raw_msg.split("guarda script",1)[1].strip()
-        else:
-            script = args
-        sid = guardar_script(user, script)
-        return jsonify({"reply": f"Script guardado con ID {sid}"})
-
-    # LISTAR SCRIPTS
-    if m.startswith("@zenko lista scripts") or cmd == "lista scripts":
-        keys = listar_scripts(user)
-        return jsonify({"reply": "Scripts guardados:\n" + "\n".join(keys)})
-
-    # VER SCRIPT
-    if m.startswith("@zenko ver script") or cmd == "ver script":
-        if m.startswith("@zenko ver script"):
-            sid = raw_msg.split("ver script",1)[1].strip()
-        else:
-            sid = args
-        s = ver_script(user, sid)
-        if not s:
-            return jsonify({"reply": f"No encuentro script {sid}"})
+            return jsonify({"reply": get_response(user, "no_snippet_type", tipo)})
         return jsonify({"reply": s})
     
-    #RSS SERAPHIM (compat)
-    if msg.strip().lower() in ("@zenko event",) or cmd == "eventos":
+    elif command_type == "guarda script":
+        # Extraer script del mensaje
+        parts = raw_msg.split("@zenko guarda script", 1)
+        if len(parts) > 1:
+            script = parts[1].strip()
+            if script:
+                sid = guardar_script(user, script)
+                return jsonify({"reply": get_response(user, "script_saved", sid)})
+        return jsonify({"reply": "Envía el script después del comando."})
+    
+    elif command_type == "lista scripts":
+        keys = listar_scripts(user)
+        if not keys:
+            return jsonify({"reply": get_response(user, "no_scripts")})
+        return jsonify({"reply": f"{get_response(user, 'scripts_list')}\n" + "\n".join(keys)})
+    
+    elif command_type == "ver script":
+        sid = extract_command_argument(raw_msg, "ver script", user)
+        s = ver_script(user, sid)
+        if not s:
+            return jsonify({"reply": get_response(user, "script_not_found", sid)})
+        return jsonify({"reply": s})
+    
+    elif command_type == "historial":
+        return jsonify({"reply": historial_resumen(user)})
+    
+    elif command_type == "lsl_on":
+        sessions[user]["lsl_mode"] = True
+        agregar_historial(user, "Modo LSL activado")
+        return jsonify({"reply": get_response(user, "lsl_on")})
+    
+    elif command_type == "lsl_off":
+        sessions[user]["lsl_mode"] = False
+        agregar_historial(user, "Modo LSL desactivado")
+        return jsonify({"reply": get_response(user, "lsl_off")})
+    
+    # COMANDOS ESPECIALES (RSS) - mantienen nombres en español pero funcionan en todos idiomas
+    if msg.strip().lower() in ("@zenko event", "@zenko eventos"):
         reply = obtener_noticias_seraphim(max_items=18)
         return jsonify({"reply": reply})
         
-    #RSS INFOBAE (compat)
-    if msg.startswith("@zenko news") or cmd == "noticias":
+    if msg.startswith("@zenko news") or msg.startswith("@zenko noticias"):
         reply = obtener_noticias_infobae(5)
         if not reply:
             reply = "DEBUG: obtener_noticias_infobae devolvio VACIO"
         return jsonify({"reply": reply})
     
-    # --------------------------------------------------------
-    # CAMBIO DE MODELO
-    # --------------------------------------------------------
-    if m.startswith("@zenko llama"):
-        sessions[user]["model"] = "llama"
-        return jsonify({"reply": "Modelo cambiado a Llama."})
-
-    if m.startswith("@zenko deepseek"):
-        sessions[user]["model"] = "deepseek"
-        return jsonify({"reply": "Modelo cambiado a DeepSeek."})
-
     # -------------------------------
     # Mensajes normales / preguntas abiertas
     # -------------------------------
-    if reply == "Comando no reconocido":
-        modelo = sessions[user].get("model", "llama")  # Llama por defecto
-
+    if reply == get_response(user, "command_not_found"):
+        modelo = sessions[user].get("model", "llama")
+        
         # forzar que chat libre use Llama, incluso si user eligió DeepSeek
         if modelo == "deepseek":
             modelo = "llama"
 
         try:
             if modelo == "llama":
-                headers = {
-                    "Authorization": f"Bearer {GROQ_API_KEY}",
-                    "Content-Type": "application/json"
-                }
-                api_url = "https://api.groq.com/openai/v1/chat/completions"
-                model_name = LLAMA_MODEL
-
-            payload = {
-                "model": model_name,
-                "messages": [
-                    {"role": "system", "content": PROMPTS[sessions[user]["lang"]]},
-                    {"role": "user", "content": msg}
-                ]
-            }
-
-            r = requests.post(api_url, headers=headers, json=payload, timeout=10)
-
-            if r.ok:
-                data = r.json()
-                reply = clean_text(data["choices"][0]["message"]["content"])
+                # Obtener el prompt en el idioma del usuario
+                prompt_base = get_prompt(user)
+                reply = call_llama_api(prompt_base, msg)
+            elif modelo == "deepseek":
+                prompt_base = get_prompt(user)
+                reply = call_deepseek_api(prompt_base, msg)
             else:
-                reply = "Error al generar respuesta desde el modelo."
-
+                reply = "Modelo no configurado correctamente."
+                
         except Exception as e:
-            reply = f"Error al generar respuesta: {str(e)}"
+            reply = f"Error procesando tu mensaje: {str(e)}"
 
-        return jsonify({"reply": reply})
+    return jsonify({"reply": reply})
 
 # --------------------------------------------------------
-# RUN SERVER
+# RUTA DE ESTADO
+# --------------------------------------------------------
+@app.route("/status", methods=["GET"])
+def status():
+    return jsonify({
+        "status": "online",
+        "version": "2.0",
+        "multi_language": True,
+        "supported_languages": ["es", "en", "fr", "it"],
+        "active_sessions": len(sessions)
+    })
+
+# --------------------------------------------------------
+# EJECUCIÓN
 # --------------------------------------------------------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
-
-
-
-
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
