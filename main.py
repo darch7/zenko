@@ -70,7 +70,9 @@ LANGUAGE_CONFIGS = {
             "search_results": "Resultados de búsqueda:",
             "weather_title": "Clima en {}",
             "news_title": "Últimas noticias:",
-            "events_title": "Próximos eventos:"
+            "events_title": "Próximos eventos:",
+            "events_not_found": "No hay eventos disponibles en este momento.",
+            "events_error": "Error al obtener eventos: {}"
         }
     },
     
@@ -130,7 +132,9 @@ LANGUAGE_CONFIGS = {
             "search_results": "Search results:",
             "weather_title": "Weather in {}",
             "news_title": "Latest news:",
-            "events_title": "Upcoming events:"
+            "events_title": "Upcoming events:",
+            "events_not_found": "No events available at the moment.",
+            "events_error": "Error getting events: {}"
         }
     },
     
@@ -190,7 +194,9 @@ LANGUAGE_CONFIGS = {
             "search_results": "Résultats de recherche:",
             "weather_title": "Météo à {}",
             "news_title": "Dernières actualités:",
-            "events_title": "Événements à venir:"
+            "events_title": "Événements à venir:",
+            "events_not_found": "Aucun événement disponible pour le moment.",
+            "events_error": "Erreur lors de l'obtention des événements: {}"
         }
     },
     
@@ -250,7 +256,9 @@ LANGUAGE_CONFIGS = {
             "search_results": "Risultati della ricerca:",
             "weather_title": "Meteo a {}",
             "news_title": "Ultime notizie:",
-            "events_title": "Eventi imminenti:"
+            "events_title": "Eventi imminenti:",
+            "events_not_found": "Nessun evento disponibile al momento.",
+            "events_error": "Errore nell'ottenere gli eventi: {}"
         }
     }
 }
@@ -470,7 +478,7 @@ def historial_resumen(user, limite=10):
         return get_response(user, "no_history")
     out = []
     for item in h:
-        t = time.strftime("%Y-%m-d %H:%M:%S", time.localtime(item["ts"]))
+        t = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(item["ts"]))
         out.append(f"{t} — {item['accion']}" + (f" ({item['extra']})" if item.get("extra") else ""))
     return "\n".join(out)
 
@@ -849,30 +857,57 @@ def obtener_clima(ciudad):
         return f"Error al obtener el clima: {str(e)}"
 
 # --------------------------------------------------------
-# RSS (SeraphimSL)
+# RSS (SeraphimSL) - EVENTOS
 # --------------------------------------------------------
-def obtener_noticias_seraphim(max_items=3):
+def obtener_eventos_seraphim(max_items=10):
     url = "https://www.seraphimsl.com/feed/"
 
     try:
         feed = feedparser.parse(url)
 
         if not feed.entries:
-            return "No hay novedades de Second Life en este momento."
+            return "No hay eventos de Second Life en este momento."
 
         salida = []
-        for e in feed.entries[:max_items]:
+        count = 0
+        for e in feed.entries:
+            if count >= max_items:
+                break
+            
+            # Filtrar por eventos (contiene palabras clave de eventos)
             titulo = clean_text(e.get("title", "Sin título"))
             link = e.get("link", "")
-            salida.append(f"- {titulo}: {link}")
+            descripcion = clean_text(e.get("description", ""))
+            
+            # Buscar palabras clave de eventos en título o descripción
+            palabras_evento = ["event", "evento", "festival", "concurso", "competition", 
+                             "show", "exhibition", "exposición", "party", "fiesta"]
+            
+            contenido = f"{titulo} {descripcion}".lower()
+            if any(palabra in contenido for palabra in palabras_evento):
+                # Extraer fecha si está disponible
+                fecha = e.get("published", "")
+                if fecha:
+                    try:
+                        fecha_obj = time.strptime(fecha, "%a, %d %b %Y %H:%M:%S %z")
+                        fecha_formateada = time.strftime("%Y-%m-%d", fecha_obj)
+                        salida.append(f"- {fecha_formateada}: {titulo} - {link}")
+                    except:
+                        salida.append(f"- {titulo} - {link}")
+                else:
+                    salida.append(f"- {titulo} - {link}")
+                count += 1
 
-        return "\n".join(salida)
+        if not salida:
+            return "No hay eventos próximos de Second Life en este momento."
+        
+        return f"{get_response('anon', 'events_title')}\n" + "\n".join(salida)
 
     except Exception as e:
-        return f"Error al leer SeraphimSL: {e}"
+        return f"Error al leer eventos de SeraphimSL: {e}"
 
 # --------------------------------------------------------
-# RSS (infobae)
+# RSS (infobae) - NOTICIAS
 # --------------------------------------------------------
 INFOBAE_FEED = "https://www.infobae.com/arc/outboundfeeds/rss/"
 
@@ -1090,9 +1125,13 @@ def chat():
         agregar_historial(user, "Modo LSL desactivado")
         return jsonify({"reply": clean_text(get_response(user, "lsl_off"))})
     
+    elif command_type == "eventos":
+        reply = obtener_eventos_seraphim(max_items=10)
+        return jsonify({"reply": clean_text(reply)})
+    
     # COMANDOS ESPECIALES (RSS) - mantienen nombres en español pero funcionan en todos idiomas
     if msg.strip().lower() in ("@zenko event", "@zenko eventos"):
-        reply = obtener_noticias_seraphim(max_items=18)
+        reply = obtener_eventos_seraphim(max_items=10)
         return jsonify({"reply": clean_text(reply)})
         
     if msg.startswith("@zenko news") or msg.startswith("@zenko noticias"):
