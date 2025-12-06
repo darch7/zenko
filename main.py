@@ -20,7 +20,7 @@ LANGUAGE_CONFIGS = {
             "@zenko clima <ciudad>": "Obtener el clima actual de la ciudad indicada.",
             "@zenko noticias": "Obtener las últimas noticias desde el RSS configurado.",
             "@zenko eventos": "Obtener los próximos eventos desde el RSS configurado.",
-            "@zenko busca <término>": "Buscar información en la web (DeepSeek -> Firecrawl fallback).",
+            "@zenko busca <término>": "Buscar información en la web.",
             "@zenko define <término>": "Obtener resumen de Wikipedia del término indicado.",
             "@zenko wikipedia <término>": "Obtener resumen de Wikipedia del término indicado.",
             "@zenko snippet <tipo>": "Generar un snippet LSL según el tipo indicado.",
@@ -82,7 +82,7 @@ LANGUAGE_CONFIGS = {
             "@zenko weather <city>": "Get current weather for the specified city.",
             "@zenko news": "Get the latest news from the configured RSS.",
             "@zenko events": "Get upcoming events from the RSS feed.",
-            "@zenko search <term>": "Search information on the web (DeepSeek -> Firecrawl fallback).",
+            "@zenko search <term>": "Search information on the web.",
             "@zenko define <term>": "Get Wikipedia summary of the specified term.",
             "@zenko wikipedia <term>": "Get Wikipedia summary of the specified term.",
             "@zenko snippet <type>": "Generate an LSL snippet according to the type.",
@@ -144,7 +144,7 @@ LANGUAGE_CONFIGS = {
             "@zenko météo <ville>": "Obtenir la météo actuelle de la ville indiquée.",
             "@zenko actualités": "Obtenir les dernières actualités depuis le RSS configuré.",
             "@zenko événements": "Obtenir les prochains événements depuis le RSS.",
-            "@zenko recherche <terme>": "Rechercher des informations sur le web (DeepSeek -> Firecrawl fallback).",
+            "@zenko recherche <terme>": "Rechercher des informations sur le web.",
             "@zenko définir <terme>": "Obtenir un résumé Wikipédia du terme indiqué.",
             "@zenko wikipedia <terme>": "Obtenir un résumé Wikipédia du terme indiqué.",
             "@zenko snippet <type>": "Générer un snippet LSL selon le type indiqué.",
@@ -206,7 +206,7 @@ LANGUAGE_CONFIGS = {
             "@zenko meteo <città>": "Ottieni le condizioni meteo attuali per la città indicata.",
             "@zenko notizie": "Ottieni le ultime notizie dal RSS configurato.",
             "@zenko eventi": "Ottieni i prossimi eventi dal feed RSS.",
-            "@zenko cerca <termine>": "Cerca informazioni sul web (DeepSeek -> Firecrawl fallback).",
+            "@zenko cerca <termine>": "Cerca informazioni sul web.",
             "@zenko definisci <termine>": "Ottieni il riassunto Wikipedia del termine indicato.",
             "@zenko wikipedia <termine>": "Ottieni il riassunto Wikipedia del termine indicado.",
             "@zenko snippet <tipo>": "Genera uno snippet LSL secondo il tipo indicato.",
@@ -1185,3 +1185,4 @@ def status():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
