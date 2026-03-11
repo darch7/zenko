@@ -1178,11 +1178,19 @@ def status():
         "supported_languages": ["es", "en", "fr", "it"],
         "active_sessions": len(sessions)
     })
-
+    
+# --------------------------------------------------------
+# RUTA PING (para mantener Render despierto)
+# --------------------------------------------------------
+@app.route("/ping", methods=["GET"])
+def ping():
+    return "Zenko awake"
+    
 # --------------------------------------------------------
 # EJECUCIÓN
 # --------------------------------------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
