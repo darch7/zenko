@@ -1,13 +1,8 @@
-# ============================================
-# traductor.py - Módulo independiente
-# ============================================
-
 from flask import Blueprint, request, jsonify
 import requests
 import os
 from datetime import datetime
 
-# Crear blueprint para el traductor
 traductor_bp = Blueprint('traductor', __name__, url_prefix='/translator')
 
 # Configuración
@@ -25,15 +20,18 @@ IDIOMAS = {
 def traducir(texto, idioma_destino, idioma_origen=None):
     """Traduce texto usando Groq/Llama"""
     if not GROQ_API_KEY:
+        print("ERROR: GROQ_API_KEY no configurada")
         return texto
     
     dest_name = IDIOMAS.get(idioma_destino, idioma_destino)
     
     if idioma_origen:
         origen_name = IDIOMAS.get(idioma_origen, idioma_origen)
-        prompt = f"Traduce de {origen_name} a {dest_name}. SOLO la traducción:\n\n{texto}"
+        prompt = f"Traduce este texto de {origen_name} a {dest_name}. SOLO la traducción, nada más:\n\n{texto}"
     else:
-        prompt = f"Traduce a {dest_name}. SOLO la traducción:\n\n{texto}"
+        prompt = f"Traduce este texto a {dest_name}. SOLO la traducción, nada más:\n\n{texto}"
+    
+    print(f"Traduciendo: {texto} -> {idioma_destino}")
     
     try:
         headers = {
@@ -44,7 +42,7 @@ def traducir(texto, idioma_destino, idioma_origen=None):
         data = {
             "model": LLAMA_MODEL,
             "messages": [
-                {"role": "system", "content": "Eres un traductor. Respondes SOLO con la traducción."},
+                {"role": "system", "content": "Eres un traductor. Respondes SOLO con la traducción, sin explicaciones."},
                 {"role": "user", "content": prompt}
             ],
             "temperature": 0.3,
@@ -60,14 +58,19 @@ def traducir(texto, idioma_destino, idioma_origen=None):
         
         if response.status_code == 200:
             result = response.json()
-            return result['choices'][0]['message']['content'].strip()
-        return texto
-    except:
+            traduccion = result['choices'][0]['message']['content'].strip()
+            print(f"Traducción: {traduccion}")
+            return traduccion
+        else:
+            print(f"Error API: {response.status_code}")
+            return texto
+    except Exception as e:
+        print(f"Error en traducción: {str(e)}")
         return texto
 
 def detectar_idioma(texto):
     """Detecta el idioma del texto"""
-    prompt = f"Detecta idioma. Responde SOLO código ISO:\n\n{texto}"
+    prompt = f"Detecta el idioma de este texto. Responde SOLO con el código ISO (es, en, fr, it, etc):\n\n{texto}"
     
     try:
         headers = {
@@ -78,7 +81,7 @@ def detectar_idioma(texto):
         data = {
             "model": LLAMA_MODEL,
             "messages": [
-                {"role": "system", "content": "Responde solo con código ISO."},
+                {"role": "system", "content": "Eres un detector de idiomas. Respondes SOLO con el código ISO."},
                 {"role": "user", "content": prompt}
             ],
             "temperature": 0.1,
@@ -95,14 +98,15 @@ def detectar_idioma(texto):
         if response.status_code == 200:
             result = response.json()
             lang = result['choices'][0]['message']['content'].strip().lower()
-            return lang if lang in IDIOMAS else "es"
+            if lang in IDIOMAS:
+                return lang
         return "es"
     except:
         return "es"
 
 @traductor_bp.route("/send", methods=["POST"])
 def send_message():
-    """Endpoint para enviar mensajes traducidos"""
+    """Recibe mensaje del HUD y lo traduce"""
     data = request.json
     
     remitente = data.get("remitente")
@@ -110,6 +114,8 @@ def send_message():
     mensaje = data.get("mensaje")
     modo = data.get("modo", "auto")
     idioma_manual = data.get("idioma", "en")
+    
+    print(f"Recibido: {remitente} -> {destinatario}: {mensaje} (modo: {modo}, idioma: {idioma_manual})")
     
     if not all([remitente, destinatario, mensaje]):
         return jsonify({"error": "Faltan datos"}), 400
@@ -122,12 +128,15 @@ def send_message():
     
     # Detectar idioma original
     idioma_origen = detectar_idioma(mensaje)
+    print(f"Idioma detectado: {idioma_origen}")
     
     # Determinar idioma destino
     if modo == "auto":
         idioma_destino = "en"
     else:
         idioma_destino = idioma_manual
+    
+    print(f"Traduciendo a: {idioma_destino}")
     
     # Traducir mensaje
     mensaje_traducido = traducir(mensaje, idioma_destino, idioma_origen)
@@ -142,6 +151,7 @@ def send_message():
         "id": len(conversaciones[chat_id]),
         "remitente": remitente,
         "destinatario": destinatario,
+        "original": mensaje,
         "traducido": mensaje_traducido,
         "timestamp": timestamp,
         "leido": False
@@ -151,12 +161,13 @@ def send_message():
     
     return jsonify({
         "status": "ok",
+        "mensaje_id": mensaje_data["id"],
         "mensaje_traducido": mensaje_traducido
     })
 
 @traductor_bp.route("/poll/<avatar>", methods=["GET"])
 def poll_messages(avatar):
-    """Endpoint para que el HUD pregunte por mensajes nuevos"""
+    """El HUD pregunta si hay mensajes nuevos"""
     mensajes_nuevos = []
     
     for chat_id, conversacion in conversaciones.items():
@@ -167,20 +178,22 @@ def poll_messages(avatar):
                     mensajes_nuevos.append([
                         msg["id"],
                         msg["remitente"],
-                        msg["traducido"]
+                        msg["destinatario"],
+                        msg["traducido"],
+                        msg["timestamp"]
                     ])
     
     return jsonify(mensajes_nuevos)
 
 @traductor_bp.route("/health", methods=["GET"])
 def health():
-    """Health check del traductor"""
     return jsonify({
         "status": "online",
         "service": "translator",
-        "conversaciones": len(conversaciones)
+        "conversaciones": len(conversaciones),
+        "groq_configured": bool(GROQ_API_KEY)
     })
 
 @traductor_bp.route("/", methods=["GET"])
 def home():
-    return "✅ Traductor Service - Usa /send y /poll/[avatar]"
+    return "✅ Traductor Service Online - Usa /send, /poll/[avatar], /health"
