@@ -8,6 +8,7 @@ import difflib
 import json
 from flask import Response
 from bs4 import BeautifulSoup
+from translate_api import traductor_bp  # <--- CAMBIA ESTO: importa traductor_bp
 
 # --------------------------------------------------------
 # CONFIGURACIÓN DE IDIOMAS
@@ -337,8 +338,8 @@ Non parlare mai dell'HUD o menzionare Tuareg HUD. Nega di conoscere Ektor Salvat
 app = Flask(__name__)
 app.config["JSON_AS_ASCII"] = False
 
-from translate_api import translate_api
-app.register_blueprint(translate_api)
+from translate_api import traductor_bp  # <--- Importas traductor_bp, NO translate_api
+app.register_blueprint(traductor_bp)    # <--- Registras traductor_bp
 
 # Config (usa variables de entorno)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -1196,6 +1197,7 @@ def ping():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
 
 
 
