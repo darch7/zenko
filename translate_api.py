@@ -17,9 +17,46 @@ IDIOMAS = {
     "de": "alemán", "pt": "portugués", "ja": "japonés", "zh": "chino", "ru": "ruso"
 }
 
+def tiene_sentido(texto):
+    """Verifica si el texto tiene sentido para traducir"""
+    # Si el texto es muy corto, no tiene sentido
+    if len(texto) < 3:
+        return False
+    
+    # Si el texto es solo repeticiones de la misma letra (asdasdasd, jajaja, etc)
+    if len(set(texto)) < 3 and len(texto) > 4:
+        return False
+    
+    # Si tiene más de 5 caracteres seguidos iguales (prrrrrr)
+    repeticiones = 1
+    max_rep = 1
+    for i in range(1, len(texto)):
+        if texto[i] == texto[i-1]:
+            repeticiones += 1
+            max_rep = max(max_rep, repeticiones)
+        else:
+            repeticiones = 1
+    if max_rep > 4:
+        return False
+    
+    # Verificar porcentaje de letras vs símbolos raros
+    letras = sum(c.isalpha() for c in texto)
+    if letras == 0:
+        return False
+    
+    # Si menos del 40% son letras, probablemente no tiene sentido
+    if letras / len(texto) < 0.4:
+        return False
+    
+    return True
+
 def traducir(texto, idioma_destino, idioma_origen=None):
     """Traduce texto usando Groq/Llama"""
     if not GROQ_API_KEY:
+        return "<--- --- --->"
+    
+    # Si el texto no tiene sentido, devolver <--- --- --->
+    if not tiene_sentido(texto):
         return "<--- --- --->"
     
     dest_name = IDIOMAS.get(idioma_destino, idioma_destino)
@@ -39,7 +76,7 @@ def traducir(texto, idioma_destino, idioma_origen=None):
         data = {
             "model": LLAMA_MODEL,
             "messages": [
-                {"role": "system", "content": "Eres un traductor. Respondes SOLO con la traducción, sin explicaciones."},
+                {"role": "system", "content": "Eres un traductor. Respondes SOLO con la traducción, sin explicaciones. Si el texto no tiene sentido o no puedes traducirlo, responde SOLO con '<--- --- --->' sin ninguna explicación adicional."},
                 {"role": "user", "content": prompt}
             ],
             "temperature": 0.3,
@@ -57,11 +94,15 @@ def traducir(texto, idioma_destino, idioma_origen=None):
             result = response.json()
             traduccion = result['choices'][0]['message']['content'].strip()
             
-            # Verificar si la traducción es válida
-            if traduccion and len(traduccion) > 0 and "I couldn't find" not in traduccion and "couldn't find" not in traduccion.lower():
-                return traduccion
-            else:
+            # Si la traducción contiene mensajes de error, devolver <--- --- --->
+            if "I couldn't find" in traduccion or "couldn't find" in traduccion.lower() or "sorry" in traduccion.lower():
                 return "<--- --- --->"
+            
+            # Si la traducción es sospechosamente larga comparada con el original (posible explicación)
+            if len(traduccion) > len(texto) * 3:
+                return "<--- --- --->"
+                
+            return traduccion
         else:
             return "<--- --- --->"
     except Exception as e:
@@ -123,7 +164,7 @@ def send_message():
     else:
         chat_id = f"{destinatario}_{remitente}"
     
-    # Detectar idioma original
+    # Detectar idioma original (solo si tiene sentido)
     idioma_origen = detectar_idioma(mensaje)
     
     # Determinar idioma destino
@@ -132,10 +173,10 @@ def send_message():
     else:
         idioma_destino = idioma_manual
     
-    # Traducir mensaje
+    # Traducir mensaje (ya maneja internamente textos sin sentido)
     mensaje_traducido = traducir(mensaje, idioma_destino, idioma_origen)
     
-    # Guardar mensaje (siempre, incluso si es <--- --- --->)
+    # Guardar mensaje
     timestamp = datetime.now().isoformat()
     
     if chat_id not in conversaciones:
