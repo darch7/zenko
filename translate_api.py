@@ -20,8 +20,7 @@ IDIOMAS = {
 def traducir(texto, idioma_destino, idioma_origen=None):
     """Traduce texto usando Groq/Llama"""
     if not GROQ_API_KEY:
-        print("ERROR: GROQ_API_KEY no configurada")
-        return texto
+        return "<--- --- --->"
     
     dest_name = IDIOMAS.get(idioma_destino, idioma_destino)
     
@@ -30,8 +29,6 @@ def traducir(texto, idioma_destino, idioma_origen=None):
         prompt = f"Traduce este texto de {origen_name} a {dest_name}. SOLO la traducción, nada más:\n\n{texto}"
     else:
         prompt = f"Traduce este texto a {dest_name}. SOLO la traducción, nada más:\n\n{texto}"
-    
-    print(f"Traduciendo: {texto} -> {idioma_destino}")
     
     try:
         headers = {
@@ -59,14 +56,16 @@ def traducir(texto, idioma_destino, idioma_origen=None):
         if response.status_code == 200:
             result = response.json()
             traduccion = result['choices'][0]['message']['content'].strip()
-            print(f"Traducción: {traduccion}")
-            return traduccion
+            
+            # Verificar si la traducción es válida
+            if traduccion and len(traduccion) > 0 and "I couldn't find" not in traduccion and "couldn't find" not in traduccion.lower():
+                return traduccion
+            else:
+                return "<--- --- --->"
         else:
-            print(f"Error API: {response.status_code}")
-            return texto
+            return "<--- --- --->"
     except Exception as e:
-        print(f"Error en traducción: {str(e)}")
-        return texto
+        return "<--- --- --->"
 
 def detectar_idioma(texto):
     """Detecta el idioma del texto"""
@@ -115,10 +114,8 @@ def send_message():
     modo = data.get("modo", "auto")
     idioma_manual = data.get("idioma", "en")
     
-    print(f"Recibido: {remitente} -> {destinatario}: {mensaje} (modo: {modo}, idioma: {idioma_manual})")
-    
     if not all([remitente, destinatario, mensaje]):
-        return jsonify({"error": "Faltan datos"}), 400
+        return jsonify({"mensaje_traducido": "<--- --- --->"}), 200
     
     # Crear ID único para la conversación
     if remitente < destinatario:
@@ -128,7 +125,6 @@ def send_message():
     
     # Detectar idioma original
     idioma_origen = detectar_idioma(mensaje)
-    print(f"Idioma detectado: {idioma_origen}")
     
     # Determinar idioma destino
     if modo == "auto":
@@ -136,12 +132,10 @@ def send_message():
     else:
         idioma_destino = idioma_manual
     
-    print(f"Traduciendo a: {idioma_destino}")
-    
     # Traducir mensaje
     mensaje_traducido = traducir(mensaje, idioma_destino, idioma_origen)
     
-    # Guardar mensaje
+    # Guardar mensaje (siempre, incluso si es <--- --- --->)
     timestamp = datetime.now().isoformat()
     
     if chat_id not in conversaciones:
