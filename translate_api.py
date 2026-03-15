@@ -46,7 +46,7 @@ def tiene_sentido(texto):
     return True
 
 def traducir(texto, idioma_destino, idioma_origen=None):
-    """Traduce texto usando Groq/Llama - CON PROMPT MEJORADO"""
+    """Traduce texto usando Groq/Llama - CON PROMPT HÍBRIDO"""
     if not GROQ_API_KEY:
         return ""
     
@@ -56,32 +56,29 @@ def traducir(texto, idioma_destino, idioma_origen=None):
     dest_name = IDIOMAS.get(idioma_destino, idioma_destino)
     origen_name = IDIOMAS.get(idioma_origen, "desconocido") if idioma_origen else "desconocido"
     
-    # PROMPT MEJORADO - SIN CAMBIAR LA ESTRUCTURA QUE FUNCIONA
-    prompt_sistema = """Eres un traductor profesional experto en lenguaje cotidiano y abreviaturas.
+    # PROMPT HÍBRIDO - Combina simplicidad con mejoras
+    prompt_sistema = """Eres un traductor profesional. Traduce SOLO el texto, sin explicaciones.
 
-INSTRUCCIONES:
-1. Traduce SOLO el texto, sin explicaciones
-2. Presta atención a los TIEMPOS VERBALES
-3. RECONOCE abreviaturas comunes:
-   - Inglés: brb (ya vuelvo), afk (desconectado), bc/bcos (porque), ofc (claro/por supuesto)
-   - Español: xq/pq (porque), tkm/tqm (te quiero mucho), tb/tmb (también)
+REGLAS IMPORTANTES:
+1. Reconoce abreviaturas comunes:
+   - Inglés: brb (ya vuelvo), afk (ausente), bc/bcos (porque), ofc (claro), idk (no sé), tbh (sinceramente)
+   - Español: xq/pq (porque), tkm/tqm (te quiero), tb/tmb (también), d2 (dedos), vdd (verdad)
    - Risas: lol/lmao → jaja/jeje
-4. Traduce MODISMOS por su significado: "it's raining cats and dogs" → "llueve a cántaros"
-5. Mantén el REGISTRO (formal/informal) del original
-6. Si el texto no tiene sentido, responde con cadena vacía
-7. NUNCA añadas explicaciones como "la traducción es"
 
-EJEMPLOS DE BUENAS TRADUCCIONES:
-- "Hey what's up?" → "¿Qué tal?"
-- "brb afk for a min" → "ya vuelvo, estoy fuera un momento"
-- "xq no vienes? tkm" → "¿por qué no vienes? te quiero"
-- "That's so cool!" → "¡Qué genial!"
-- "I'm gonna head out, ttyl!" → "Me voy, ¡hablamos luego!"""
+2. Traduce modismos por su significado real:
+   - "it's raining cats and dogs" → "llueve a cántaros"
+   - "break a leg" → "mucha suerte"
+
+3. Mantén el mismo tono (formal/informal) del original
+
+4. Si el texto no tiene sentido, responde con cadena vacía
+
+Traduce de forma natural, como lo diría un hablante nativo."""
     
     if idioma_origen:
-        prompt_usuario = f"Traduce este texto de {origen_name} a {dest_name}. Sé natural: {texto}"
+        prompt_usuario = f"Texto en {origen_name}:\n{texto}\n\nTraducción natural a {dest_name}:"
     else:
-        prompt_usuario = f"Traduce este texto a {dest_name}. Sé natural: {texto}"
+        prompt_usuario = f"Texto:\n{texto}\n\nTraducción natural a {dest_name}:"
     
     try:
         headers = {
@@ -95,7 +92,7 @@ EJEMPLOS DE BUENAS TRADUCCIONES:
                 {"role": "system", "content": prompt_sistema},
                 {"role": "user", "content": prompt_usuario}
             ],
-            "temperature": 0.3,  # Un poco más alto para naturalidad
+            "temperature": 0.2,  # Mantenemos 0.2 que funcionaba
             "max_tokens": 500
         }
         
@@ -173,7 +170,7 @@ def detectar_idioma(texto):
 
 @traductor_bp.route("/send", methods=["POST"])
 def send_message():
-    """Recibe mensaje del HUD y lo traduce - DEVUELVE SOLO TEXTO"""
+    """Recibe mensaje del HUD y lo traduce"""
     data = request.json
     
     remitente = data.get("remitente")
@@ -181,57 +178,46 @@ def send_message():
     mensaje = data.get("mensaje")
     modo = data.get("modo", "auto")
     
-    # Nuevos campos para emisor/receptor
     idioma_emisor = data.get("idioma_emisor", "auto")
     idioma_receptor = data.get("idioma_receptor", "es")
-    
-    # Compatibilidad con formato antiguo
     idioma_manual = data.get("idioma", "en")
     
     if not all([remitente, destinatario, mensaje]):
-        return "", 200  # Devolver vacío si faltan datos
+        return "", 200
     
-    # DETERMINAR IDIOMA ORIGEN
+    # DETECTAR IDIOMA ORIGEN
     if modo == "auto" or idioma_emisor == "auto":
-        # En modo auto, detectar automáticamente
         idioma_origen = detectar_idioma(mensaje)
-        print(f"Idioma detectado automáticamente: {idioma_origen}")
+        print(f"Idioma detectado: {idioma_origen}")
     else:
-        # En modo manual, usar el especificado
         idioma_origen = idioma_emisor
-        print(f"Idioma origen especificado: {idioma_origen}")
+        print(f"Idioma origen: {idioma_origen}")
     
     # DETERMINAR IDIOMA DESTINO
     if modo == "auto":
-        # En modo auto, usar el receptor especificado
         idioma_destino = idioma_receptor if idioma_receptor != "auto" else idioma_manual
-        print(f"Modo auto - Destino: {idioma_destino}")
+        print(f"Destino: {idioma_destino}")
     else:
-        # En modo manual, usar el receptor especificado
         idioma_destino = idioma_receptor
-        print(f"Modo manual - Destino: {idioma_destino}")
+        print(f"Destino: {idioma_destino}")
     
-    # DECISIÓN DE TRADUCCIÓN - MANTENIENDO LA LÓGICA QUE FUNCIONA
+    # DECISIÓN DE TRADUCCIÓN - LÓGICA QUE FUNCIONA
     if modo == "auto":
-        # En modo auto, SIEMPRE intentamos traducir
-        print(f"Modo auto - Intentando traducción de {idioma_origen} a {idioma_destino}")
+        print(f"Traduciendo de {idioma_origen} a {idioma_destino}")
         mensaje_traducido = traducir(mensaje, idioma_destino, idioma_origen)
-        # Si la traducción falla, devolvemos el original
         if not mensaje_traducido:
-            mensaje_traducido = mensaje
+            mensaje_traducido = ""
     else:
-        # En modo manual, solo traducir si son diferentes
         if idioma_origen != idioma_destino:
-            print(f"Modo manual - Traduciendo de {idioma_origen} a {idioma_destino}")
+            print(f"Traduciendo de {idioma_origen} a {idioma_destino}")
             mensaje_traducido = traducir(mensaje, idioma_destino, idioma_origen)
         else:
-            print(f"Mismo idioma ({idioma_origen} = {idioma_destino}) - No se traduce")
-            mensaje_traducido = mensaje
+            print(f"Mismo idioma, no se traduce")
+            mensaje_traducido = ""
     
-    # Guardar en conversaciones (opcional)
+    # Guardar en conversaciones
     timestamp = datetime.now().isoformat()
     
-    # Crear ID único para la conversación
     if remitente < destinatario:
         chat_id = f"{remitente}_{destinatario}"
     else:
@@ -252,21 +238,18 @@ def send_message():
     
     conversaciones[chat_id].append(mensaje_data)
     
-    # DEVOLVER SOLO EL TEXTO TRADUCIDO
     return Response(mensaje_traducido, mimetype='text/plain; charset=utf-8')
 
 @traductor_bp.route("/poll/<avatar>", methods=["GET"])
 def poll_messages(avatar):
-    """El HUD pregunta si hay mensajes nuevos"""
     mensajes_nuevos = []
-    
     for chat_id, conversacion in conversaciones.items():
         if avatar in chat_id:
             for msg in conversacion:
                 if msg["destinatario"] == avatar and not msg["leido"]:
                     msg["leido"] = True
-                    mensajes_nuevos.append(msg["traducido"])
-    
+                    if msg["traducido"]:
+                        mensajes_nuevos.append(msg["traducido"])
     return jsonify(mensajes_nuevos)
 
 @traductor_bp.route("/health", methods=["GET"])
