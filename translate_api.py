@@ -55,7 +55,7 @@ def traducir(texto, idioma_destino, idioma_origen=None):
     
     dest_name = IDIOMAS.get(idioma_destino, idioma_destino)
     
-    # Prompt simplificado
+    # Prompt mejorado
     prompt_sistema = "Eres un traductor profesional. Traduce SOLO el texto, sin explicaciones. Presta atención a los tiempos verbales. Si el texto no tiene sentido, responde con una cadena vacía."
     
     if idioma_origen:
@@ -156,6 +156,12 @@ def send_message():
     destinatario = data.get("destinatario")
     mensaje = data.get("mensaje")
     modo = data.get("modo", "auto")
+    
+    # Nuevos campos para emisor/receptor
+    idioma_emisor = data.get("idioma_emisor", "auto")
+    idioma_receptor = data.get("idioma_receptor", "es")
+    
+    # Compatibilidad con formato antiguo
     idioma_manual = data.get("idioma", "en")
     
     if not all([remitente, destinatario, mensaje]):
@@ -166,14 +172,33 @@ def send_message():
     else:
         chat_id = f"{destinatario}_{remitente}"
     
-    idioma_origen = detectar_idioma(mensaje)
-    
-    if modo == "auto":
-        idioma_destino = "en"
+    # DETERMINAR IDIOMA ORIGEN
+    if modo == "auto" or idioma_emisor == "auto":
+        # En modo auto, detectar automáticamente
+        idioma_origen = detectar_idioma(mensaje)
+        print(f"Idioma detectado automáticamente: {idioma_origen}")
     else:
-        idioma_destino = idioma_manual
+        # En modo manual, usar el especificado
+        idioma_origen = idioma_emisor
+        print(f"Idioma origen especificado: {idioma_origen}")
     
-    mensaje_traducido = traducir(mensaje, idioma_destino, idioma_origen)
+    # DETERMINAR IDIOMA DESTINO
+    if modo == "auto":
+        # En modo auto, usar el receptor especificado o el manual antiguo
+        idioma_destino = idioma_receptor if idioma_receptor != "auto" else idioma_manual
+        print(f"Modo auto - Destino: {idioma_destino}")
+    else:
+        # En modo manual, usar el receptor especificado
+        idioma_destino = idioma_receptor
+        print(f"Modo manual - Destino: {idioma_destino}")
+    
+    # SOLO TRADUCIR SI LOS IDIOMAS SON DIFERENTES
+    if idioma_origen != idioma_destino:
+        print(f"Traduciendo de {idioma_origen} a {idioma_destino}")
+        mensaje_traducido = traducir(mensaje, idioma_destino, idioma_origen)
+    else:
+        print(f"Mismo idioma ({idioma_origen} = {idioma_destino}) - No se traduce")
+        mensaje_traducido = mensaje  # Devolver el original si son el mismo idioma
     
     timestamp = datetime.now().isoformat()
     
