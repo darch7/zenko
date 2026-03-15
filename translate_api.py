@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, Response
 import requests
 import os
 from datetime import datetime
@@ -149,7 +149,7 @@ def detectar_idioma(texto):
 
 @traductor_bp.route("/send", methods=["POST"])
 def send_message():
-    """Recibe mensaje del HUD y lo traduce"""
+    """Recibe mensaje del HUD y lo traduce - DEVUELVE SOLO TEXTO"""
     data = request.json
     
     remitente = data.get("remitente")
@@ -165,7 +165,7 @@ def send_message():
     idioma_manual = data.get("idioma", "en")
     
     if not all([remitente, destinatario, mensaje]):
-        return jsonify({"mensaje_traducido": ""}), 200
+        return "", 200  # Devolver vacío si faltan datos
     
     if remitente < destinatario:
         chat_id = f"{remitente}_{destinatario}"
@@ -200,6 +200,7 @@ def send_message():
         print(f"Mismo idioma ({idioma_origen} = {idioma_destino}) - No se traduce")
         mensaje_traducido = mensaje  # Devolver el original si son el mismo idioma
     
+    # Guardar en conversaciones (opcional pero útil)
     timestamp = datetime.now().isoformat()
     
     if chat_id not in conversaciones:
@@ -217,11 +218,8 @@ def send_message():
     
     conversaciones[chat_id].append(mensaje_data)
     
-    return jsonify({
-        "status": "ok",
-        "mensaje_id": mensaje_data["id"],
-        "mensaje_traducido": mensaje_traducido
-    })
+    # DEVOLVER SOLO EL TEXTO TRADUCIDO (SIN JSON)
+    return Response(mensaje_traducido, mimetype='text/plain; charset=utf-8')
 
 @traductor_bp.route("/poll/<avatar>", methods=["GET"])
 def poll_messages(avatar):
@@ -233,14 +231,10 @@ def poll_messages(avatar):
             for msg in conversacion:
                 if msg["destinatario"] == avatar and not msg["leido"]:
                     msg["leido"] = True
-                    mensajes_nuevos.append([
-                        msg["id"],
-                        msg["remitente"],
-                        msg["destinatario"],
-                        msg["traducido"],
-                        msg["timestamp"]
-                    ])
+                    # Aquí también devolvemos solo el texto traducido
+                    mensajes_nuevos.append(msg["traducido"])
     
+    # Devolver como lista de textos planos
     return jsonify(mensajes_nuevos)
 
 @traductor_bp.route("/health", methods=["GET"])
