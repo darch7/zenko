@@ -75,7 +75,7 @@ def tiene_sentido(texto):
     return True
 
 # ------------------------
-# TRADUCCIÓN IA
+# TRADUCCIÓN IA (MEJORADA)
 # ------------------------
 def traducir(texto, idioma_destino, idioma_origen=None):
     if not GROQ_API_KEY:
@@ -87,23 +87,35 @@ def traducir(texto, idioma_destino, idioma_origen=None):
     dest_name = IDIOMAS.get(idioma_destino, idioma_destino)
     origen_name = IDIOMAS.get(idioma_origen, "desconocido") if idioma_origen else "desconocido"
 
-    prompt_sistema = """Eres un traductor profesional de alta precisión.
+    prompt_sistema = """Eres un traductor profesional avanzado especializado en lenguaje informal y de chat.
 
-REGLAS:
-- Traduce SOLO texto
-- NO traduzcas símbolos o decoraciones
-- NO traduzcas emojis
-- NO agregues explicaciones
-- Mantén nombres propios intactos
-- Mantén el tono original
-- Si no se puede traducir, responde vacío
+Tu tarea es traducir el mensaje con precisión, pero entendiendo el significado real, no solo las palabras.
 
-Devuelve solo la traducción limpia."""
+REGLAS IMPORTANTES:
 
-    if idioma_origen:
-        prompt_usuario = f"Texto en {origen_name}:\n{texto}\n\nTraduce a {dest_name}:"
-    else:
-        prompt_usuario = f"Texto:\n{texto}\n\nTraduce a {dest_name}:"
+- Interpreta el contexto antes de traducir.
+- Corrige mentalmente errores comunes del usuario (faltas de tildes, escritura rápida, etc).
+  Ejemplos:
+  - "papa" puede ser "papá" o "papa (comida)" según contexto
+  - "bebe" puede ser "bebé" o "bebe (verbo)"
+  - "mama" puede ser "mamá" o "mama (anatómico)"
+- Asume lenguaje informal tipo chat (Second Life, juegos, etc).
+- NO traduzcas palabra por palabra si eso rompe el sentido.
+- Mantén el significado original aunque tengas que reformular.
+- Mantén nombres propios intactos.
+- NO traduzcas símbolos ni emojis.
+- NO agregues explicaciones.
+- Si el texto no tiene sentido, responde vacío.
+
+Devuelve SOLO la traducción final limpia y natural."""
+
+    prompt_usuario = f"""Texto original:
+{texto}
+
+Idioma origen: {origen_name}
+Traducir a: {dest_name}
+
+Traducción:"""
 
     try:
         response = requests.post(
@@ -118,7 +130,7 @@ Devuelve solo la traducción limpia."""
                     {"role": "system", "content": prompt_sistema},
                     {"role": "user", "content": prompt_usuario}
                 ],
-                "temperature": 0.1,
+                "temperature": 0.3,
                 "max_tokens": 300
             },
             timeout=10
