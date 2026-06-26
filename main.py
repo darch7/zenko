@@ -1049,13 +1049,6 @@ def chat():
         with pending_lock:
             pending_updates.clear()
         return jsonify({"reply": "Lista vaciada."})
-
-    if m.startswith("@zenko ban ") and is_admin(user):
-        target = m.replace("@zenko ban ", "").strip()
-        with blacklist_lock:
-            blacklist.add(target)
-        return jsonify({"reply": f"Baneado: {target}"})
-
     if m.startswith("@zenko unban ") and is_admin(user):
         target = m.replace("@zenko unban ", "").strip()
         with blacklist_lock:
@@ -1067,7 +1060,11 @@ def chat():
             if not blacklist:
                 return jsonify({"reply": "No hay baneados."})
             return jsonify({"reply": "Baneados:\n" + "\n".join(blacklist)})
-
+    if m.startswith("@zenko ban ") and is_admin(user):
+            target = m.replace("@zenko ban ", "").strip()
+            with blacklist_lock:
+                blacklist.add(target)
+            return jsonify({"reply": f"Baneado: {target}"})
     # ── Cambio de modelo ───────────────────────────────
     if m.startswith("@zenko llama"):
         sessions[user]["model"] = "llama"
