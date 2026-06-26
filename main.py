@@ -35,25 +35,15 @@ LANGUAGE_CONFIGS = {
             "@zenko news": "Obtener noticias de Infobae (alternativa a noticias)."
         },
         "keywords": {
-            "funciones": "funciones",
-            "clima": "clima",
-            "noticias": "noticias",
-            "eventos": "eventos",
-            "busca": "busca",
-            "define": "define",
-            "wikipedia": "wikipedia",
-            "snippet": "snippet",
-            "historial": "historial",
-            "scripts": "scripts",
-            "ver": "ver",
-            "guarda": "guarda",
-            "lsl": "lsl"
+            "funciones": "funciones", "clima": "clima", "noticias": "noticias",
+            "eventos": "eventos", "busca": "busca", "define": "define",
+            "wikipedia": "wikipedia", "snippet": "snippet", "historial": "historial",
+            "scripts": "scripts", "ver": "ver", "guarda": "guarda", "lsl": "lsl"
         },
         "responses": {
             "command_not_found": "Comando no reconocido",
             "language_changed": "Idioma cambiado a español.",
-            "lsl_on": "Modo LSL activado.",
-            "lsl_off": "Modo LSL desactivado.",
+            "lsl_on": "Modo LSL activado.", "lsl_off": "Modo LSL desactivado.",
             "model_changed": "Modelo cambiado a {}.",
             "no_city": "Indica la ciudad: @zenko clima <ciudad>",
             "no_search_term": "Indica el término de búsqueda: @zenko busca <término>",
@@ -61,8 +51,7 @@ LANGUAGE_CONFIGS = {
             "no_snippet_type": "No tengo snippet del tipo '{}'.",
             "script_saved": "Script guardado con ID {}",
             "script_not_found": "No encuentro script {}",
-            "no_history": "No hay historial reciente.",
-            "no_scripts": "No hay scripts guardados.",
+            "no_history": "No hay historial reciente.", "no_scripts": "No hay scripts guardados.",
             "commands_list": "Zenko puede hacer:",
             "weather_error": "Error al obtener el clima: {}",
             "news_error": "Error al obtener noticias: {}",
@@ -70,14 +59,12 @@ LANGUAGE_CONFIGS = {
             "scripts_list": "Scripts guardados:",
             "no_results": "No encontré resultados para '{}'.",
             "search_results": "Resultados de búsqueda:",
-            "weather_title": "Clima en {}",
-            "news_title": "Últimas noticias:",
+            "weather_title": "Clima en {}", "news_title": "Últimas noticias:",
             "events_title": "Próximos eventos:",
             "events_not_found": "No hay eventos disponibles en este momento.",
             "events_error": "Error al obtener eventos: {}"
         }
     },
-
     "en": {
         "commands": {
             "@zenko functions": "Show this list of available commands.",
@@ -97,25 +84,15 @@ LANGUAGE_CONFIGS = {
             "@zenko noticias": "Get news from Infobae (alternative to news)."
         },
         "keywords": {
-            "funciones": "functions",
-            "clima": "weather",
-            "noticias": "news",
-            "eventos": "events",
-            "busca": "search",
-            "define": "define",
-            "wikipedia": "wikipedia",
-            "snippet": "snippet",
-            "historial": "history",
-            "scripts": "scripts",
-            "ver": "view",
-            "guarda": "save",
-            "lsl": "lsl"
+            "funciones": "functions", "clima": "weather", "noticias": "news",
+            "eventos": "events", "busca": "search", "define": "define",
+            "wikipedia": "wikipedia", "snippet": "snippet", "historial": "history",
+            "scripts": "scripts", "ver": "view", "guarda": "save", "lsl": "lsl"
         },
         "responses": {
             "command_not_found": "Command not recognized",
             "language_changed": "Language changed to English.",
-            "lsl_on": "LSL mode activated.",
-            "lsl_off": "LSL mode deactivated.",
+            "lsl_on": "LSL mode activated.", "lsl_off": "LSL mode deactivated.",
             "model_changed": "Model changed to {}.",
             "no_city": "Specify the city: @zenko weather <city>",
             "no_search_term": "Specify search term: @zenko search <term>",
@@ -123,8 +100,7 @@ LANGUAGE_CONFIGS = {
             "no_snippet_type": "I don't have snippet of type '{}'.",
             "script_saved": "Script saved with ID {}",
             "script_not_found": "I can't find script {}",
-            "no_history": "No recent history.",
-            "no_scripts": "No saved scripts.",
+            "no_history": "No recent history.", "no_scripts": "No saved scripts.",
             "commands_list": "Zenko can do:",
             "weather_error": "Error getting weather: {}",
             "news_error": "Error getting news: {}",
@@ -132,14 +108,12 @@ LANGUAGE_CONFIGS = {
             "scripts_list": "Saved scripts:",
             "no_results": "No results found for '{}'.",
             "search_results": "Search results:",
-            "weather_title": "Weather in {}",
-            "news_title": "Latest news:",
+            "weather_title": "Weather in {}", "news_title": "Latest news:",
             "events_title": "Upcoming events:",
             "events_not_found": "No events available at the moment.",
             "events_error": "Error getting events: {}"
         }
     },
-
     "fr": {
         "commands": {
             "@zenko fonctions": "Affiche cette liste de commandes disponibles.",
@@ -159,25 +133,15 @@ LANGUAGE_CONFIGS = {
             "@zenko noticias": "Obtenir les actualités d'Infobae (alternative à actualités)."
         },
         "keywords": {
-            "funciones": "fonctions",
-            "clima": "météo",
-            "noticias": "actualités",
-            "eventos": "événements",
-            "busca": "recherche",
-            "define": "définir",
-            "wikipedia": "wikipedia",
-            "snippet": "snippet",
-            "historial": "historique",
-            "scripts": "scripts",
-            "ver": "voir",
-            "guarda": "enregistrer",
-            "lsl": "lsl"
+            "funciones": "fonctions", "clima": "météo", "noticias": "actualités",
+            "eventos": "événements", "busca": "recherche", "define": "définir",
+            "wikipedia": "wikipedia", "snippet": "snippet", "historial": "historique",
+            "scripts": "scripts", "ver": "voir", "guarda": "enregistrer", "lsl": "lsl"
         },
         "responses": {
             "command_not_found": "Commande non reconnue",
             "language_changed": "Langue changée en français.",
-            "lsl_on": "Mode LSL activé.",
-            "lsl_off": "Mode LSL désactivé.",
+            "lsl_on": "Mode LSL activé.", "lsl_off": "Mode LSL désactivé.",
             "model_changed": "Modèle changé en {}.",
             "no_city": "Indiquez la ville: @zenko météo <ville>",
             "no_search_term": "Indiquez le terme de recherche: @zenko recherche <terme>",
@@ -185,8 +149,7 @@ LANGUAGE_CONFIGS = {
             "no_snippet_type": "Je n'ai pas de snippet de type '{}'.",
             "script_saved": "Script enregistré avec ID {}",
             "script_not_found": "Je ne trouve pas le script {}",
-            "no_history": "Aucun historique récent.",
-            "no_scripts": "Aucun script enregistré.",
+            "no_history": "Aucun historique récent.", "no_scripts": "Aucun script enregistré.",
             "commands_list": "Zenko peut faire:",
             "weather_error": "Erreur lors de l'obtention de la météo: {}",
             "news_error": "Erreur lors de l'obtention des actualités: {}",
@@ -194,14 +157,12 @@ LANGUAGE_CONFIGS = {
             "scripts_list": "Scripts enregistrés:",
             "no_results": "Aucun résultat trouvé pour '{}'.",
             "search_results": "Résultats de recherche:",
-            "weather_title": "Météo à {}",
-            "news_title": "Dernières actualités:",
+            "weather_title": "Météo à {}", "news_title": "Dernières actualités:",
             "events_title": "Événements à venir:",
             "events_not_found": "Aucun événement disponible pour le moment.",
             "events_error": "Erreur lors de l'obtention des événements: {}"
         }
     },
-
     "it": {
         "commands": {
             "@zenko funzioni": "Mostra questo elenco di comandi disponibili.",
@@ -221,25 +182,15 @@ LANGUAGE_CONFIGS = {
             "@zenko news": "Ottieni notizie da Infobae (alternativa a notizie)."
         },
         "keywords": {
-            "funciones": "funzioni",
-            "clima": "meteo",
-            "noticias": "notizie",
-            "eventos": "eventi",
-            "busca": "cerca",
-            "define": "definisci",
-            "wikipedia": "wikipedia",
-            "snippet": "snippet",
-            "historial": "cronologia",
-            "scripts": "script",
-            "ver": "visualizza",
-            "guarda": "salva",
-            "lsl": "lsl"
+            "funciones": "funzioni", "clima": "meteo", "noticias": "notizie",
+            "eventos": "eventi", "busca": "cerca", "define": "definisci",
+            "wikipedia": "wikipedia", "snippet": "snippet", "historial": "cronologia",
+            "scripts": "script", "ver": "visualizza", "guarda": "salva", "lsl": "lsl"
         },
         "responses": {
             "command_not_found": "Comando non riconosciuto",
             "language_changed": "Lingua cambiata in italiano.",
-            "lsl_on": "Modalità LSL attivata.",
-            "lsl_off": "Modalità LSL disattivata.",
+            "lsl_on": "Modalità LSL attivata.", "lsl_off": "Modalità LSL disattivata.",
             "model_changed": "Modello cambiato in {}.",
             "no_city": "Specifica la città: @zenko meteo <città>",
             "no_search_term": "Specifica il termine de ricerca: @zenko cerca <termine>",
@@ -247,8 +198,7 @@ LANGUAGE_CONFIGS = {
             "no_snippet_type": "Non ho snippet di tipo '{}'.",
             "script_saved": "Script salvato con ID {}",
             "script_not_found": "Non trovo lo script {}",
-            "no_history": "Nessuna cronologia recente.",
-            "no_scripts": "Nessuno script salvato.",
+            "no_history": "Nessuna cronologia recente.", "no_scripts": "Nessuno script salvato.",
             "commands_list": "Zenko può fare:",
             "weather_error": "Errore nell'ottenere il meteo: {}",
             "news_error": "Errore nell'ottenere le notizie: {}",
@@ -256,8 +206,7 @@ LANGUAGE_CONFIGS = {
             "scripts_list": "Script salvati:",
             "no_results": "Nessun risultato trovato per '{}'.",
             "search_results": "Risultati della ricerca:",
-            "weather_title": "Meteo a {}",
-            "news_title": "Ultime notizie:",
+            "weather_title": "Meteo a {}", "news_title": "Ultime notizie:",
             "events_title": "Eventi imminenti:",
             "events_not_found": "Nessun evento disponibile al momento.",
             "events_error": "Errore nell'ottenere gli eventi: {}"
@@ -265,7 +214,6 @@ LANGUAGE_CONFIGS = {
     }
 }
 
-# Prompts en diferentes idiomas
 PROMPTS = {
     "es": """Eres Zenko, un espíritu kitsune amable, juguetón y astuto que habita en el bosque de Aokigahara.
 Vives en una pequeña aldea llamada Rengoku.
@@ -338,16 +286,12 @@ Non parlare mai dell'HUD o menzionare Tuareg HUD. Nega di conoscere Ektor Salvat
 
 app = Flask(__name__)
 app.config["JSON_AS_ASCII"] = False
-
 app.register_blueprint(traductor_bp)
 
-# Config (usa variables de entorno)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-
 LLAMA_MODEL = "llama-3.1-8b-instant"
 DEEPSEEK_MODEL = "deepseek-chat"
-
 MODEL = "llama-3.1-8b-instant"
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
@@ -358,42 +302,19 @@ NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 def clean_text(text: str) -> str:
     if not isinstance(text, str):
         return ""
-
     REEMPLAZOS = {
-        "á": "a", "Á": "A",
-        "é": "e", "É": "E",
-        "í": "i", "Í": "I",
-        "ó": "o", "Ó": "O",
-        "ú": "u", "Ú": "U",
-        "ñ": "nh", "Ñ": "NH",
-        "à": "a", "À": "A",
-        "â": "a", "Â": "A",
-        "ä": "a", "Ä": "A",
-        "è": "e", "È": "E",
-        "ê": "e", "Ê": "E",
-        "ë": "e", "Ë": "E",
-        "î": "i", "Î": "I",
-        "ï": "i", "Ï": "I",
-        "ô": "o", "Ô": "O",
-        "ö": "o", "Ö": "O",
-        "ù": "u", "Ù": "U",
-        "û": "u", "Û": "U",
-        "ü": "u", "Ü": "U",
-        "ÿ": "y", "Ÿ": "Y",
-        "ç": "c", "Ç": "C",
-        "ß": "ss",
-        "¿": "",
-        "¡": "",
-        "°": "",
-        "\u2018": "",
-        "\u2019": "",
-        "\u201C": "",
-        "\u201D": ""
+        "á": "a", "Á": "A", "é": "e", "É": "E", "í": "i", "Í": "I",
+        "ó": "o", "Ó": "O", "ú": "u", "Ú": "U", "ñ": "nh", "Ñ": "NH",
+        "à": "a", "À": "A", "â": "a", "Â": "A", "ä": "a", "Ä": "A",
+        "è": "e", "È": "E", "ê": "e", "Ê": "E", "ë": "e", "Ë": "E",
+        "î": "i", "Î": "I", "ï": "i", "Ï": "I", "ô": "o", "Ô": "O",
+        "ö": "o", "Ö": "O", "ù": "u", "Ù": "U", "û": "u", "Û": "U",
+        "ü": "u", "Ü": "U", "ÿ": "y", "Ÿ": "Y", "ç": "c", "Ç": "C",
+        "ß": "ss", "¿": "", "¡": "", "°": "",
+        "\u2018": "", "\u2019": "", "\u201C": "", "\u201D": ""
     }
-
     for k, v in REEMPLAZOS.items():
         text = text.replace(k, v)
-
     return text.replace("\r\n", "\n").strip()
 
 def now_ts() -> int:
@@ -407,12 +328,10 @@ def get_user_lang(user):
     return sessions[user].get("lang", "es")
 
 def get_commands(user):
-    lang = get_user_lang(user)
-    return LANGUAGE_CONFIGS[lang]["commands"]
+    return LANGUAGE_CONFIGS[get_user_lang(user)]["commands"]
 
 def get_keyword(user, keyword):
-    lang = get_user_lang(user)
-    return LANGUAGE_CONFIGS[lang]["keywords"].get(keyword, keyword)
+    return LANGUAGE_CONFIGS[get_user_lang(user)]["keywords"].get(keyword, keyword)
 
 def get_response(user, response_key, *format_args):
     lang = get_user_lang(user)
@@ -422,45 +341,31 @@ def get_response(user, response_key, *format_args):
     return response
 
 def get_prompt(user):
-    lang = get_user_lang(user)
-    return PROMPTS.get(lang, PROMPTS["es"])
+    return PROMPTS.get(get_user_lang(user), PROMPTS["es"])
 
 # --------------------------------------------------------
-# INICIALIZAR SESIÓN
+# SESIONES
 # --------------------------------------------------------
 sessions = {}
 
 def ensure_session(user):
     if user not in sessions:
         sessions[user] = {
-            "lang": "es",
-            "history": [],
-            "lsl_mode": False,
-            "scripts": {},
-            "contexto": {
-                "tipo": None,
-                "data": None,
-                "ts": 0
-            },
-            "model": "llama"
+            "lang": "es", "history": [], "lsl_mode": False, "scripts": {},
+            "contexto": {"tipo": None, "data": None, "ts": 0}, "model": "llama"
         }
 
 # --------------------------------------------------------
-# HISTORIAL SIMPLE
+# HISTORIAL
 # --------------------------------------------------------
 def agregar_historial(user, accion, extra=None):
     ensure_session(user)
-    sessions[user]["history"].append({
-        "accion": accion,
-        "extra": extra,
-        "ts": now_ts()
-    })
+    sessions[user]["history"].append({"accion": accion, "extra": extra, "ts": now_ts()})
     sessions[user]["history"] = sessions[user]["history"][-50:]
 
 def historial_resumen(user, limite=10):
     ensure_session(user)
     h = sessions[user]["history"][-limite:]
-
     if not h:
         return get_response(user, "no_history")
     out = []
@@ -470,7 +375,7 @@ def historial_resumen(user, limite=10):
     return "\n".join(out)
 
 # --------------------------------------------------------
-# CONTEXTO / INTENCION
+# CONTEXTO
 # --------------------------------------------------------
 def set_contexto(user, tipo, data):
     ensure_session(user)
@@ -483,32 +388,28 @@ def get_contexto(user):
 
 def detectar_intencion(msg, user):
     m = msg.lower().strip()
-
     continuaciones = ["continua", "continuar", "sigue", "segui", "optimiza", "revisa", "analiza", "eso", "si", "dale"]
     if any(w in m for w in continuaciones):
         ctx = get_contexto(user)
         if ctx and ctx.get("data"):
             return "continuacion"
-
     if parece_lsl(msg):
         return "script"
-
     if len(msg) >= 600:
         return "texto_largo"
-
     palabras_lag = ["lag", "lento", "crash", "freeze", "sensor", "timer", "colgado"]
     if any(p in m for p in palabras_lag):
         return "diagnostico"
-
     return "normal"
 
 # --------------------------------------------------------
-# DETECCION / ANALISIS LSL
+# LSL
 # --------------------------------------------------------
 def parece_lsl(text):
     if not isinstance(text, str):
         return False
-    claves = ["default", "state_entry", "touch_start", "llSay", "llOwnerSay", "llSetPos", "llDialog", "llListen", "llSensor", "llSetTimerEvent"]
+    claves = ["default", "state_entry", "touch_start", "llSay", "llOwnerSay",
+              "llSetPos", "llDialog", "llListen", "llSensor", "llSetTimerEvent"]
     t = text.lower()
     return any(k.lower() in t for k in claves)
 
@@ -531,7 +432,7 @@ def contiene_riesgos_lsl(text):
     return risky
 
 # --------------------------------------------------------
-# GUARDADO / LISTADO / VER SCRIPTS
+# SCRIPTS
 # --------------------------------------------------------
 def guardar_script(user, script):
     ensure_session(user)
@@ -548,13 +449,8 @@ def ver_script(user, sid):
     ensure_session(user)
     return sessions[user]["scripts"].get(sid)
 
-# --------------------------------------------------------
-# COMPARADOR SIMPLE (por texto)
-# --------------------------------------------------------
 def comparar_scripts_text(a_text, b_text):
-    a_lines = a_text.splitlines()
-    b_lines = b_text.splitlines()
-    d = difflib.unified_diff(a_lines, b_lines, lineterm="")
+    d = difflib.unified_diff(a_text.splitlines(), b_text.splitlines(), lineterm="")
     return "\n".join(d)
 
 # --------------------------------------------------------
@@ -583,236 +479,133 @@ default { state_entry(){ llSetTimerEvent(T); } timer(){ /* trabajo */ } }"""
 }
 
 # --------------------------------------------------------
-# FUNCIONES PARA DETECTAR COMANDOS EN DIFERENTES IDIOMAS
+# DETECCIÓN DE COMANDOS
 # --------------------------------------------------------
 def detect_command(raw_msg, user):
     m = raw_msg.lower().strip()
     lang = get_user_lang(user)
 
     if lang == "en":
-        if m.startswith("@zenko functions"):
-            return "funciones"
-        elif m.startswith("@zenko weather"):
-            return "clima"
-        elif m.startswith("@zenko news"):
-            return "noticias"
-        elif m.startswith("@zenko events"):
-            return "eventos"
-        elif m.startswith("@zenko search"):
-            return "busca"
-        elif m.startswith("@zenko define"):
-            return "define"
-        elif m.startswith("@zenko snippet"):
-            return "snippet"
-        elif m.startswith("@zenko history"):
-            return "historial"
-        elif m.startswith("@zenko list scripts"):
-            return "lista scripts"
-        elif m.startswith("@zenko view script"):
-            return "ver script"
-        elif m.startswith("@zenko save script"):
-            return "guarda script"
-        elif m == "@zenko lsl on":
-            return "lsl_on"
-        elif m == "@zenko lsl off":
-            return "lsl_off"
-
+        if m.startswith("@zenko functions"):   return "funciones"
+        if m.startswith("@zenko weather"):     return "clima"
+        if m.startswith("@zenko news"):        return "noticias"
+        if m.startswith("@zenko events"):      return "eventos"
+        if m.startswith("@zenko search"):      return "busca"
+        if m.startswith("@zenko define"):      return "define"
+        if m.startswith("@zenko snippet"):     return "snippet"
+        if m.startswith("@zenko history"):     return "historial"
+        if m.startswith("@zenko list scripts"):return "lista scripts"
+        if m.startswith("@zenko view script"): return "ver script"
+        if m.startswith("@zenko save script"): return "guarda script"
+        if m == "@zenko lsl on":               return "lsl_on"
+        if m == "@zenko lsl off":              return "lsl_off"
     elif lang == "fr":
-        if m.startswith("@zenko fonctions"):
-            return "funciones"
-        elif m.startswith("@zenko météo"):
-            return "clima"
-        elif m.startswith("@zenko actualités"):
-            return "noticias"
-        elif m.startswith("@zenko événements"):
-            return "eventos"
-        elif m.startswith("@zenko recherche"):
-            return "busca"
-        elif m.startswith("@zenko définir"):
-            return "define"
-        elif m.startswith("@zenko snippet"):
-            return "snippet"
-        elif m.startswith("@zenko historique"):
-            return "historial"
-        elif m.startswith("@zenko liste scripts"):
-            return "lista scripts"
-        elif m.startswith("@zenko voir script"):
-            return "ver script"
-        elif m.startswith("@zenko enregistrer script"):
-            return "guarda script"
-        elif m == "@zenko lsl on":
-            return "lsl_on"
-        elif m == "@zenko lsl off":
-            return "lsl_off"
-
+        if m.startswith("@zenko fonctions"):        return "funciones"
+        if m.startswith("@zenko météo"):            return "clima"
+        if m.startswith("@zenko actualités"):       return "noticias"
+        if m.startswith("@zenko événements"):       return "eventos"
+        if m.startswith("@zenko recherche"):        return "busca"
+        if m.startswith("@zenko définir"):          return "define"
+        if m.startswith("@zenko snippet"):          return "snippet"
+        if m.startswith("@zenko historique"):       return "historial"
+        if m.startswith("@zenko liste scripts"):    return "lista scripts"
+        if m.startswith("@zenko voir script"):      return "ver script"
+        if m.startswith("@zenko enregistrer script"):return "guarda script"
+        if m == "@zenko lsl on":                    return "lsl_on"
+        if m == "@zenko lsl off":                   return "lsl_off"
     elif lang == "it":
-        if m.startswith("@zenko funzioni"):
-            return "funciones"
-        elif m.startswith("@zenko meteo"):
-            return "clima"
-        elif m.startswith("@zenko notizie"):
-            return "noticias"
-        elif m.startswith("@zenko eventi"):
-            return "eventos"
-        elif m.startswith("@zenko cerca"):
-            return "busca"
-        elif m.startswith("@zenko definisci"):
-            return "define"
-        elif m.startswith("@zenko snippet"):
-            return "snippet"
-        elif m.startswith("@zenko cronologia"):
-            return "historial"
-        elif m.startswith("@zenko lista script"):
-            return "lista scripts"
-        elif m.startswith("@zenko visualizza script"):
-            return "ver script"
-        elif m.startswith("@zenko salva script"):
-            return "guarda script"
-        elif m == "@zenko lsl on":
-            return "lsl_on"
-        elif m == "@zenko lsl off":
-            return "lsl_off"
+        if m.startswith("@zenko funzioni"):         return "funciones"
+        if m.startswith("@zenko meteo"):            return "clima"
+        if m.startswith("@zenko notizie"):          return "noticias"
+        if m.startswith("@zenko eventi"):           return "eventos"
+        if m.startswith("@zenko cerca"):            return "busca"
+        if m.startswith("@zenko definisci"):        return "define"
+        if m.startswith("@zenko snippet"):          return "snippet"
+        if m.startswith("@zenko cronologia"):       return "historial"
+        if m.startswith("@zenko lista script"):     return "lista scripts"
+        if m.startswith("@zenko visualizza script"):return "ver script"
+        if m.startswith("@zenko salva script"):     return "guarda script"
+        if m == "@zenko lsl on":                    return "lsl_on"
+        if m == "@zenko lsl off":                   return "lsl_off"
 
     # Fallback español
-    if m.startswith("@zenko funciones"):
-        return "funciones"
-    elif m.startswith("@zenko clima"):
-        return "clima"
-    elif m.startswith("@zenko noticias"):
-        return "noticias"
-    elif m.startswith("@zenko eventos"):
-        return "eventos"
-    elif m.startswith("@zenko busca"):
-        return "busca"
-    elif m.startswith("@zenko define"):
-        return "define"
-    elif m.startswith("@zenko wikipedia"):
-        return "wikipedia"
-    elif m.startswith("@zenko snippet"):
-        return "snippet"
-    elif m.startswith("@zenko historial"):
-        return "historial"
-    elif m.startswith("@zenko lista scripts"):
-        return "lista scripts"
-    elif m.startswith("@zenko ver script"):
-        return "ver script"
-    elif m.startswith("@zenko guarda script"):
-        return "guarda script"
-    elif m == "@zenko lsl on":
-        return "lsl_on"
-    elif m == "@zenko lsl off":
-        return "lsl_off"
-
+    if m.startswith("@zenko funciones"):    return "funciones"
+    if m.startswith("@zenko clima"):        return "clima"
+    if m.startswith("@zenko noticias"):     return "noticias"
+    if m.startswith("@zenko eventos"):      return "eventos"
+    if m.startswith("@zenko busca"):        return "busca"
+    if m.startswith("@zenko define"):       return "define"
+    if m.startswith("@zenko wikipedia"):    return "wikipedia"
+    if m.startswith("@zenko snippet"):      return "snippet"
+    if m.startswith("@zenko historial"):    return "historial"
+    if m.startswith("@zenko lista scripts"):return "lista scripts"
+    if m.startswith("@zenko ver script"):   return "ver script"
+    if m.startswith("@zenko guarda script"):return "guarda script"
+    if m == "@zenko lsl on":                return "lsl_on"
+    if m == "@zenko lsl off":               return "lsl_off"
     return None
 
 def extract_command_argument(raw_msg, command_type, user):
     lang = get_user_lang(user)
-
     if command_type == "clima":
-        if lang == "en":
-            return raw_msg.split("weather", 1)[1].strip() if "weather" in raw_msg.lower() else ""
-        elif lang == "fr":
-            return raw_msg.split("météo", 1)[1].strip() if "météo" in raw_msg.lower() else ""
-        elif lang == "it":
-            return raw_msg.split("meteo", 1)[1].strip() if "meteo" in raw_msg.lower() else ""
-        else:
-            return raw_msg.split("clima", 1)[1].strip()
-
-    elif command_type == "busca":
-        if lang == "en":
-            return raw_msg.split("search", 1)[1].strip() if "search" in raw_msg.lower() else ""
-        elif lang == "fr":
-            return raw_msg.split("recherche", 1)[1].strip() if "recherche" in raw_msg.lower() else ""
-        elif lang == "it":
-            return raw_msg.split("cerca", 1)[1].strip() if "cerca" in raw_msg.lower() else ""
-        else:
-            return raw_msg.split("busca", 1)[1].strip()
-
-    elif command_type in ["define", "wikipedia"]:
-        if lang == "en":
-            return raw_msg.split("define", 1)[1].strip() if "define" in raw_msg.lower() else ""
-        elif lang == "fr":
-            return raw_msg.split("définir", 1)[1].strip() if "définir" in raw_msg.lower() else ""
-        elif lang == "it":
-            return raw_msg.split("definisci", 1)[1].strip() if "definisci" in raw_msg.lower() else ""
-        else:
-            parts = raw_msg.split(" ", 2)
-            return parts[2].strip() if len(parts) > 2 else ""
-
-    elif command_type == "snippet":
+        if lang == "en":   return raw_msg.split("weather", 1)[1].strip() if "weather" in raw_msg.lower() else ""
+        if lang == "fr":   return raw_msg.split("météo", 1)[1].strip() if "météo" in raw_msg.lower() else ""
+        if lang == "it":   return raw_msg.split("meteo", 1)[1].strip() if "meteo" in raw_msg.lower() else ""
+        return raw_msg.split("clima", 1)[1].strip()
+    if command_type == "busca":
+        if lang == "en":   return raw_msg.split("search", 1)[1].strip() if "search" in raw_msg.lower() else ""
+        if lang == "fr":   return raw_msg.split("recherche", 1)[1].strip() if "recherche" in raw_msg.lower() else ""
+        if lang == "it":   return raw_msg.split("cerca", 1)[1].strip() if "cerca" in raw_msg.lower() else ""
+        return raw_msg.split("busca", 1)[1].strip()
+    if command_type in ["define", "wikipedia"]:
+        if lang == "en":   return raw_msg.split("define", 1)[1].strip() if "define" in raw_msg.lower() else ""
+        if lang == "fr":   return raw_msg.split("définir", 1)[1].strip() if "définir" in raw_msg.lower() else ""
+        if lang == "it":   return raw_msg.split("definisci", 1)[1].strip() if "definisci" in raw_msg.lower() else ""
+        parts = raw_msg.split(" ", 2)
+        return parts[2].strip() if len(parts) > 2 else ""
+    if command_type == "snippet":
         return raw_msg.split("snippet", 1)[1].strip()
-
-    elif command_type == "ver script":
-        if lang == "en":
-            return raw_msg.split("view script", 1)[1].strip() if "view script" in raw_msg.lower() else ""
-        elif lang == "fr":
-            return raw_msg.split("voir script", 1)[1].strip() if "voir script" in raw_msg.lower() else ""
-        elif lang == "it":
-            return raw_msg.split("visualizza script", 1)[1].strip() if "visualizza script" in raw_msg.lower() else ""
-        else:
-            return raw_msg.split("ver script", 1)[1].strip()
-
+    if command_type == "ver script":
+        if lang == "en":   return raw_msg.split("view script", 1)[1].strip() if "view script" in raw_msg.lower() else ""
+        if lang == "fr":   return raw_msg.split("voir script", 1)[1].strip() if "voir script" in raw_msg.lower() else ""
+        if lang == "it":   return raw_msg.split("visualizza script", 1)[1].strip() if "visualizza script" in raw_msg.lower() else ""
+        return raw_msg.split("ver script", 1)[1].strip()
     return ""
 
 # --------------------------------------------------------
-# BÚSQUEDA WEB (Firecrawl)
+# BÚSQUEDA WEB
 # --------------------------------------------------------
 def web_search_fallback(term):
-    headers = {
-        "Authorization": f"Bearer {os.getenv('FIRECRAWL_API_KEY')}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "query": term,
-        "limit": 5,
-        "lang": "es"
-    }
-
+    headers = {"Authorization": f"Bearer {os.getenv('FIRECRAWL_API_KEY')}", "Content-Type": "application/json"}
     try:
-        r = requests.post(
-            "https://api.firecrawl.dev/v1/search",
-            headers=headers,
-            json=payload,
-            timeout=8
-        )
+        r = requests.post("https://api.firecrawl.dev/v1/search",
+                          headers=headers, json={"query": term, "limit": 5, "lang": "es"}, timeout=8)
         if r.ok:
-            data = r.json()
-            results = data.get("data", [])
+            results = r.json().get("data", [])
             if results:
-                return [
-                    {"title": clean_text(x.get("title", "")),
-                     "url": x.get("url", "")}
-                    for x in results
-                ]
+                return [{"title": clean_text(x.get("title", "")), "url": x.get("url", "")} for x in results]
     except Exception as e:
         print("Firecrawl error:", e)
-
     return []
 
 # --------------------------------------------------------
-# WIKIPEDIA (resumen)
+# WIKIPEDIA
 # --------------------------------------------------------
 def wiki_summary(term):
     if not term:
         return "Indica un término."
     try:
         t = term.strip().replace(" ", "_")
-        url = f"https://es.wikipedia.org/api/rest_v1/page/summary/{t}"
-        r = requests.get(url, timeout=5)
+        r = requests.get(f"https://es.wikipedia.org/api/rest_v1/page/summary/{t}", timeout=5)
         if r.ok:
-            data = r.json()
-            extract = data.get("extract")
-            if extract:
-                return clean_text(extract)
-            return "No encuentro resumen en Wikipedia."
-        else:
-            return "No encontré la página en Wikipedia."
+            extract = r.json().get("extract")
+            return clean_text(extract) if extract else "No encuentro resumen en Wikipedia."
+        return "No encontré la página en Wikipedia."
     except Exception as e:
         return f"Error consultando Wikipedia: {str(e)}"
 
 # --------------------------------------------------------
-# CLIMA (OpenWeather)
+# CLIMA
 # --------------------------------------------------------
 def obtener_clima(ciudad):
     if not OPENWEATHER_API_KEY:
@@ -828,60 +621,47 @@ def obtener_clima(ciudad):
         temp = d["main"]["temp"]
         hum = d["main"]["humidity"]
         viento = d["wind"].get("speed", 0)
-        texto = f"Clima en {ciudad}: {desc}. Temp {temp}C, Humedad {hum}%, Viento {viento} m/s."
-        return clean_text(texto)
+        return clean_text(f"Clima en {ciudad}: {desc}. Temp {temp}C, Humedad {hum}%, Viento {viento} m/s.")
     except Exception as e:
         return f"Error al obtener el clima: {str(e)}"
 
 # --------------------------------------------------------
-# RSS (SeraphimSL) - EVENTOS
+# RSS EVENTOS
 # --------------------------------------------------------
 def obtener_eventos_seraphim(max_items=10):
-    url = "https://www.seraphimsl.com/feed/"
-
     try:
-        feed = feedparser.parse(url)
-
+        feed = feedparser.parse("https://www.seraphimsl.com/feed/")
         if not feed.entries:
             return "No hay eventos de Second Life en este momento."
-
         salida = []
         count = 0
         for e in feed.entries:
             if count >= max_items:
                 break
-
             titulo = clean_text(e.get("title", "Sin título"))
             link = e.get("link", "")
             descripcion = clean_text(e.get("description", ""))
-
             palabras_evento = ["event", "evento", "festival", "concurso", "competition",
                                "show", "exhibition", "exposición", "party", "fiesta"]
-
-            contenido = f"{titulo} {descripcion}".lower()
-            if any(palabra in contenido for palabra in palabras_evento):
+            if any(p in f"{titulo} {descripcion}".lower() for p in palabras_evento):
                 fecha = e.get("published", "")
                 if fecha:
                     try:
                         fecha_obj = time.strptime(fecha, "%a, %d %b %Y %H:%M:%S %z")
-                        fecha_formateada = time.strftime("%Y-%m-%d", fecha_obj)
-                        salida.append(f"- {fecha_formateada}: {titulo} - {link}")
+                        salida.append(f"- {time.strftime('%Y-%m-%d', fecha_obj)}: {titulo} - {link}")
                     except:
                         salida.append(f"- {titulo} - {link}")
                 else:
                     salida.append(f"- {titulo} - {link}")
                 count += 1
-
         if not salida:
             return "No hay eventos próximos de Second Life en este momento."
-
         return "Proximos eventos:\n" + "\n".join(salida)
-
     except Exception as e:
         return f"Error al leer eventos de SeraphimSL: {e}"
 
 # --------------------------------------------------------
-# RSS (infobae) - NOTICIAS
+# RSS NOTICIAS
 # --------------------------------------------------------
 INFOBAE_FEED = "https://www.infobae.com/arc/outboundfeeds/rss/"
 
@@ -891,11 +671,9 @@ def obtener_noticias_infobae(max_items=5):
         r.raise_for_status()
         r.encoding = 'utf-8'
         soup = BeautifulSoup(r.text, "xml")
-
         items = soup.find_all("item")
         if not items:
             return "No hay noticias disponibles de Infobae."
-
         salida = []
         count = 0
         for item in items:
@@ -904,91 +682,44 @@ def obtener_noticias_infobae(max_items=5):
             try:
                 title = str(item.title.text) if item.title else "Sin titulo"
                 link = str(item.link.text) if item.link else ""
-                title_clean = clean_text(title)
-                salida.append(f"- {title_clean}: {link}")
+                salida.append(f"- {clean_text(title)}: {link}")
                 count += 1
             except Exception:
                 continue
-
-        if not salida:
-            return "No hay noticias disponibles de Infobae."
-        return "\n".join(salida)
-
+        return "\n".join(salida) if salida else "No hay noticias disponibles de Infobae."
     except Exception as e:
         return f"Error al consultar noticias de Infobae: {str(e)}"
 
 # --------------------------------------------------------
-# LLAMADA A API GROQ / DEEPSEEK
+# APIs LLM
 # --------------------------------------------------------
 def call_llama_api(prompt, user_msg):
     if not GROQ_API_KEY:
         return "API de Groq no configurada."
-
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    data = {
-        "model": LLAMA_MODEL,
-        "messages": [
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": user_msg}
-        ],
-        "temperature": 0.7,
-        "max_tokens": 1000
-    }
-
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+    data = {"model": LLAMA_MODEL, "messages": [{"role": "system", "content": prompt},
+            {"role": "user", "content": user_msg}], "temperature": 0.7, "max_tokens": 1000}
     try:
-        response = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers=headers,
-            json=data,
-            timeout=30
-        )
-
+        response = requests.post("https://api.groq.com/openai/v1/chat/completions",
+                                 headers=headers, json=data, timeout=30)
         if response.status_code == 200:
-            result = response.json()
-            return clean_text(result['choices'][0]['message']['content'])
-        else:
-            return f"Error en la API: {response.status_code} - {response.text}"
-
+            return clean_text(response.json()['choices'][0]['message']['content'])
+        return f"Error en la API: {response.status_code} - {response.text}"
     except Exception as e:
         return f"Error al conectar con la API: {str(e)}"
 
 def call_deepseek_api(prompt, user_msg):
     if not DEEPSEEK_API_KEY:
         return "API de DeepSeek no configurada."
-
-    headers = {
-        "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    data = {
-        "model": DEEPSEEK_MODEL,
-        "messages": [
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": user_msg}
-        ],
-        "temperature": 0.7,
-        "max_tokens": 1000
-    }
-
+    headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
+    data = {"model": DEEPSEEK_MODEL, "messages": [{"role": "system", "content": prompt},
+            {"role": "user", "content": user_msg}], "temperature": 0.7, "max_tokens": 1000}
     try:
-        response = requests.post(
-            "https://api.deepseek.com/v1/chat/completions",
-            headers=headers,
-            json=data,
-            timeout=30
-        )
-
+        response = requests.post("https://api.deepseek.com/v1/chat/completions",
+                                 headers=headers, json=data, timeout=30)
         if response.status_code == 200:
-            result = response.json()
-            return clean_text(result['choices'][0]['message']['content'])
-        else:
-            return f"Error en la API DeepSeek: {response.status_code}"
-
+            return clean_text(response.json()['choices'][0]['message']['content'])
+        return f"Error en la API DeepSeek: {response.status_code}"
     except Exception as e:
         return f"Error al conectar con DeepSeek: {str(e)}"
 
@@ -1019,7 +750,6 @@ def chat():
 
     ensure_session(user)
     reply = get_response(user, "command_not_found")
-    modelo = sessions[user].get("model", "llama")
 
     # ── Comandos Admin ─────────────────────────────────
     if m.startswith("@zenko update ") and is_admin(user):
@@ -1049,22 +779,26 @@ def chat():
         with pending_lock:
             pending_updates.clear()
         return jsonify({"reply": "Lista vaciada."})
+
     if m.startswith("@zenko unban ") and is_admin(user):
         target = m.replace("@zenko unban ", "").strip()
         with blacklist_lock:
             blacklist.discard(target)
         return jsonify({"reply": f"Desbaneado: {target}"})
 
+    # ── ban list ANTES de ban <uuid> para evitar el conflicto de startswith ──
     if m == "@zenko ban list" and is_admin(user):
         with blacklist_lock:
             if not blacklist:
                 return jsonify({"reply": "No hay baneados."})
             return jsonify({"reply": "Baneados:\n" + "\n".join(blacklist)})
+
     if m.startswith("@zenko ban ") and is_admin(user):
-            target = m.replace("@zenko ban ", "").strip()
-            with blacklist_lock:
-                blacklist.add(target)
-            return jsonify({"reply": f"Baneado: {target}"})
+        target = m.replace("@zenko ban ", "").strip()
+        with blacklist_lock:
+            blacklist.add(target)
+        return jsonify({"reply": f"Baneado: {target}"})
+
     # ── Cambio de modelo ───────────────────────────────
     if m.startswith("@zenko llama"):
         sessions[user]["model"] = "llama"
@@ -1154,13 +888,10 @@ def chat():
         return jsonify({"reply": clean_text(get_response(user, "lsl_off"))})
 
     elif command_type == "eventos":
-        reply = obtener_eventos_seraphim(max_items=10)
-        return jsonify({"reply": clean_text(reply)})
+        return jsonify({"reply": clean_text(obtener_eventos_seraphim(max_items=10))})
 
-    # ── Comandos RSS especiales ────────────────────────
     if msg.strip().lower() in ("@zenko event", "@zenko eventos"):
-        reply = obtener_eventos_seraphim(max_items=10)
-        return jsonify({"reply": clean_text(reply)})
+        return jsonify({"reply": clean_text(obtener_eventos_seraphim(max_items=10))})
 
     if msg.startswith("@zenko news") or msg.startswith("@zenko noticias"):
         reply = obtener_noticias_infobae(5)
@@ -1171,21 +902,16 @@ def chat():
     # ── Chat libre ─────────────────────────────────────
     if reply == get_response(user, "command_not_found"):
         modelo = sessions[user].get("model", "llama")
-
-        # forzar Llama para chat libre incluso si user eligió DeepSeek
         if modelo == "deepseek":
             modelo = "llama"
-
         try:
+            prompt_base = get_prompt(user)
             if modelo == "llama":
-                prompt_base = get_prompt(user)
                 reply = call_llama_api(prompt_base, msg)
             elif modelo == "deepseek":
-                prompt_base = get_prompt(user)
                 reply = call_deepseek_api(prompt_base, msg)
             else:
                 reply = "Modelo no configurado correctamente."
-
         except Exception as e:
             reply = f"Error procesando tu mensaje: {str(e)}"
 
@@ -1199,12 +925,13 @@ def get_version():
     owner = request.args.get("owner", "").strip()
     with blacklist_lock:
         if owner in blacklist:
-            return jsonify({"min_version": MIN_VERSION, "blocked": True})
-    return jsonify({"min_version": MIN_VERSION, "blocked": False})
+            # ← FIX: devolver "true"/"false" como strings, no booleanos JSON
+            return jsonify({"min_version": MIN_VERSION, "blocked": "true"})
+    return jsonify({"min_version": MIN_VERSION, "blocked": "false"})
 
 @app.route("/request_update", methods=["POST"])
 def request_update():
-    data      = request.json or {}
+    data = request.json or {}
     owner_uuid = data.get("owner", "").strip()
     if not owner_uuid:
         return jsonify({"error": "missing owner"}), 400
@@ -1226,7 +953,7 @@ def get_pending():
 
 @app.route("/clear", methods=["POST"])
 def clear_pending():
-    data       = request.json or {}
+    data = request.json or {}
     owner_uuid = data.get("owner", "").strip()
     if not owner_uuid:
         return jsonify({"error": "missing owner"}), 400
@@ -1235,14 +962,12 @@ def clear_pending():
     return jsonify({"status": "cleared", "owner": owner_uuid})
 
 # --------------------------------------------------------
-# RUTAS DE ESTADO / PING
+# ESTADO / PING
 # --------------------------------------------------------
 @app.route("/status", methods=["GET"])
 def status():
     return jsonify({
-        "status": "online",
-        "version": "2.0",
-        "multi_language": True,
+        "status": "online", "version": "2.0", "multi_language": True,
         "supported_languages": ["es", "en", "fr", "it"],
         "active_sessions": len(sessions)
     })
