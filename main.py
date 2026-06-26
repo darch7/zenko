@@ -1190,7 +1190,115 @@ def status():
 @app.route("/ping", methods=["GET"])
 def ping():
     return "Zenko awake"
-    
+
+# --------------------------------------------------------
+# ZENKO UPDATE SYSTEM
+# --------------------------------------------------------
+import threading
+
+ADMIN_UUID  = "7e8a1bf1-184b-4c23-9cd7-8b41c6f9e8e7"
+MIN_VERSION = int(os.getenv("MIN_VERSION", "1"))
+
+pending_updates = set()
+pending_lock    = threading.Lock()
+blacklist       = set()
+blacklist_lock  = threading.Lock()
+
+def is_admin(user):
+    return user == ADMIN_UUID
+
+# ── Endpoints ──────────────────────────────────────────
+
+@app.route("/version", methods=["GET"])
+def get_version():
+    owner = request.args.get("owner", "").strip()
+    with blacklist_lock:
+        if owner in blacklist:
+            return jsonify({"min_version": MIN_VERSION, "blocked": True})
+    return jsonify({"min_version": MIN_VERSION, "blocked": False})
+
+@app.route("/request_update", methods=["POST"])
+def request_update():
+    data      = request.json or {}
+    owner_uuid = data.get("owner", "").strip()
+    if not owner_uuid:
+        return jsonify({"error": "missing owner"}), 400
+    with blacklist_lock:
+        if owner_uuid in blacklist:
+            return jsonify({"status": "queued", "owner": owner_uuid})
+    with pending_lock:
+        pending_updates.add(owner_uuid)
+    return jsonify({"status": "queued", "owner": owner_uuid})
+
+@app.route("/pending", methods=["GET"])
+def get_pending():
+    with pending_lock:
+        with blacklist_lock:
+            entregables = [o for o in pending_updates if o not in blacklist]
+    if not entregables:
+        return jsonify({"pending": []})
+    return jsonify({"pending": entregables})
+
+@app.route("/clear", methods=["POST"])
+def clear_pending():
+    data       = request.json or {}
+    owner_uuid = data.get("owner", "").strip()
+    if not owner_uuid:
+        return jsonify({"error": "missing owner"}), 400
+    with pending_lock:
+        pending_updates.discard(owner_uuid)
+    return jsonify({"status": "cleared", "owner": owner_uuid})
+
+# ── Admin commands en /chat ────────────────────────────
+# Pega este bloque DENTRO de la funcion chat(),
+# ANTES del bloque de comandos normales (antes del if m.startswith("@zenko "))
+
+# if m.startswith("@zenko update ") and is_admin(user):
+#     parts = m.split()
+#     if len(parts) == 3 and parts[2].isdigit():
+#         global MIN_VERSION
+#         MIN_VERSION = int(parts[2])
+#         return jsonify({"reply": f"Version minima actualizada a {MIN_VERSION}."})
+#     return jsonify({"reply": "Uso: @zenko update <numero>"})
+#
+# if m == "@zenko version" and is_admin(user):
+#     return jsonify({"reply": f"MIN_VERSION actual: {MIN_VERSION}"})
+#
+# if m == "@zenko hud list" and is_admin(user):
+#     with pending_lock:
+#         if not pending_updates:
+#             return jsonify({"reply": "No hay pendientes."})
+#         return jsonify({"reply": "Pendientes:\n" + "\n".join(pending_updates)})
+#
+# if m.startswith("@zenko hud clear ") and is_admin(user):
+#     target = m.replace("@zenko hud clear ", "").strip()
+#     with pending_lock:
+#         pending_updates.discard(target)
+#     return jsonify({"reply": f"Removido: {target}"})
+#
+# if m == "@zenko hud clearall" and is_admin(user):
+#     with pending_lock:
+#         pending_updates.clear()
+#     return jsonify({"reply": "Lista vaciada."})
+#
+# if m.startswith("@zenko ban ") and is_admin(user):
+#     target = m.replace("@zenko ban ", "").strip()
+#     with blacklist_lock:
+#         blacklist.add(target)
+#     return jsonify({"reply": f"Baneado: {target}"})
+#
+# if m.startswith("@zenko unban ") and is_admin(user):
+#     target = m.replace("@zenko unban ", "").strip()
+#     with blacklist_lock:
+#         blacklist.discard(target)
+#     return jsonify({"reply": f"Desbaneado: {target}"})
+#
+# if m == "@zenko ban list" and is_admin(user):
+#     with blacklist_lock:
+#         if not blacklist:
+#             return jsonify({"reply": "No hay baneados."})
+#         return jsonify({"reply": "Baneados:\n" + "\n".join(blacklist)})
+
 # --------------------------------------------------------
 # EJECUCIÓN
 # --------------------------------------------------------
