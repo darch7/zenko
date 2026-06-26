@@ -6,16 +6,17 @@ import feedparser
 import time
 import difflib
 import json
+import threading
 from flask import Response
 from bs4 import BeautifulSoup
-from translate_api import traductor_bp  # <--- CAMBIA ESTO: importa traductor_bp
+from translate_api import traductor_bp
 
 # --------------------------------------------------------
 # CONFIGURACIÓN DE IDIOMAS
 # --------------------------------------------------------
 
 LANGUAGE_CONFIGS = {
-    "es": {  # Español
+    "es": {
         "commands": {
             "@zenko funciones": "Muestra esta lista de comandos disponibles.",
             "@zenko clima <ciudad>": "Obtener el clima actual de la ciudad indicada.",
@@ -76,8 +77,8 @@ LANGUAGE_CONFIGS = {
             "events_error": "Error al obtener eventos: {}"
         }
     },
-    
-    "en": {  # Inglés
+
+    "en": {
         "commands": {
             "@zenko functions": "Show this list of available commands.",
             "@zenko weather <city>": "Get current weather for the specified city.",
@@ -138,8 +139,8 @@ LANGUAGE_CONFIGS = {
             "events_error": "Error getting events: {}"
         }
     },
-    
-    "fr": {  # Francés
+
+    "fr": {
         "commands": {
             "@zenko fonctions": "Affiche cette liste de commandes disponibles.",
             "@zenko météo <ville>": "Obtenir la météo actuelle de la ville indiquée.",
@@ -200,8 +201,8 @@ LANGUAGE_CONFIGS = {
             "events_error": "Erreur lors de l'obtention des événements: {}"
         }
     },
-    
-    "it": {  # Italiano
+
+    "it": {
         "commands": {
             "@zenko funzioni": "Mostra questo elenco di comandi disponibili.",
             "@zenko meteo <città>": "Ottieni le condizioni meteo attuali per la città indicata.",
@@ -338,8 +339,7 @@ Non parlare mai dell'HUD o menzionare Tuareg HUD. Nega di conoscere Ektor Salvat
 app = Flask(__name__)
 app.config["JSON_AS_ASCII"] = False
 
-from translate_api import traductor_bp  # <--- Importas traductor_bp, NO translate_api
-app.register_blueprint(traductor_bp)    # <--- Registras traductor_bp
+app.register_blueprint(traductor_bp)
 
 # Config (usa variables de entorno)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -360,52 +360,35 @@ def clean_text(text: str) -> str:
         return ""
 
     REEMPLAZOS = {
-        # Español
         "á": "a", "Á": "A",
         "é": "e", "É": "E",
         "í": "i", "Í": "I",
         "ó": "o", "Ó": "O",
         "ú": "u", "Ú": "U",
         "ñ": "nh", "Ñ": "NH",
-
-        # Francés
         "à": "a", "À": "A",
         "â": "a", "Â": "A",
         "ä": "a", "Ä": "A",
-
         "è": "e", "È": "E",
         "ê": "e", "Ê": "E",
         "ë": "e", "Ë": "E",
-
         "î": "i", "Î": "I",
         "ï": "i", "Ï": "I",
-
         "ô": "o", "Ô": "O",
         "ö": "o", "Ö": "O",
-
         "ù": "u", "Ù": "U",
         "û": "u", "Û": "U",
         "ü": "u", "Ü": "U",
-
         "ÿ": "y", "Ÿ": "Y",
         "ç": "c", "Ç": "C",
-
-        # Alemán
         "ß": "ss",
-
-        # Signos de apertura (ELIMINAR)
         "¿": "",
         "¡": "",
-
-        # Símbolo de grado
         "°": "",
-        
-        # Comillas curvas
         "\u2018": "",
         "\u2019": "",
         "\u201C": "",
         "\u201D": ""
-
     }
 
     for k, v in REEMPLAZOS.items():
@@ -445,7 +428,7 @@ def get_prompt(user):
 # --------------------------------------------------------
 # INICIALIZAR SESIÓN
 # --------------------------------------------------------
-sessions = {}  # <-- Debe estar aquí, antes de ensure_session
+sessions = {}
 
 def ensure_session(user):
     if user not in sessions:
@@ -459,7 +442,7 @@ def ensure_session(user):
                 "data": None,
                 "ts": 0
             },
-            "model": "llama"  # modelo por defecto
+            "model": "llama"
         }
 
 # --------------------------------------------------------
@@ -472,7 +455,6 @@ def agregar_historial(user, accion, extra=None):
         "extra": extra,
         "ts": now_ts()
     })
-    # mantener solo últimas 50
     sessions[user]["history"] = sessions[user]["history"][-50:]
 
 def historial_resumen(user, limite=10):
@@ -502,27 +484,22 @@ def get_contexto(user):
 def detectar_intencion(msg, user):
     m = msg.lower().strip()
 
-    # Continuación si palabras de continuación y hay contexto
     continuaciones = ["continua", "continuar", "sigue", "segui", "optimiza", "revisa", "analiza", "eso", "si", "dale"]
     if any(w in m for w in continuaciones):
         ctx = get_contexto(user)
         if ctx and ctx.get("data"):
             return "continuacion"
 
-    # Si parece LSL (heurística)
     if parece_lsl(msg):
         return "script"
 
-    # Texto largo -> posible resumen
     if len(msg) >= 600:
         return "texto_largo"
 
-    # Diagnóstico por palabras clave
     palabras_lag = ["lag", "lento", "crash", "freeze", "sensor", "timer", "colgado"]
     if any(p in m for p in palabras_lag):
         return "diagnostico"
 
-    # Búsqueda, define, snippet commands handled elsewhere
     return "normal"
 
 # --------------------------------------------------------
@@ -609,11 +586,9 @@ default { state_entry(){ llSetTimerEvent(T); } timer(){ /* trabajo */ } }"""
 # FUNCIONES PARA DETECTAR COMANDOS EN DIFERENTES IDIOMAS
 # --------------------------------------------------------
 def detect_command(raw_msg, user):
-    """Detecta qué comando se está usando, considerando el idioma del usuario"""
     m = raw_msg.lower().strip()
     lang = get_user_lang(user)
-    
-    # Primero, verificar comandos específicos de cada idioma
+
     if lang == "en":
         if m.startswith("@zenko functions"):
             return "funciones"
@@ -641,7 +616,7 @@ def detect_command(raw_msg, user):
             return "lsl_on"
         elif m == "@zenko lsl off":
             return "lsl_off"
-            
+
     elif lang == "fr":
         if m.startswith("@zenko fonctions"):
             return "funciones"
@@ -669,7 +644,7 @@ def detect_command(raw_msg, user):
             return "lsl_on"
         elif m == "@zenko lsl off":
             return "lsl_off"
-            
+
     elif lang == "it":
         if m.startswith("@zenko funzioni"):
             return "funciones"
@@ -697,8 +672,8 @@ def detect_command(raw_msg, user):
             return "lsl_on"
         elif m == "@zenko lsl off":
             return "lsl_off"
-    
-    # Si no se detecta comando específico del idioma, buscar comandos en español
+
+    # Fallback español
     if m.startswith("@zenko funciones"):
         return "funciones"
     elif m.startswith("@zenko clima"):
@@ -727,13 +702,12 @@ def detect_command(raw_msg, user):
         return "lsl_on"
     elif m == "@zenko lsl off":
         return "lsl_off"
-    
+
     return None
 
 def extract_command_argument(raw_msg, command_type, user):
-    """Extrae el argumento de un comando, considerando el idioma"""
     lang = get_user_lang(user)
-    
+
     if command_type == "clima":
         if lang == "en":
             return raw_msg.split("weather", 1)[1].strip() if "weather" in raw_msg.lower() else ""
@@ -743,7 +717,7 @@ def extract_command_argument(raw_msg, command_type, user):
             return raw_msg.split("meteo", 1)[1].strip() if "meteo" in raw_msg.lower() else ""
         else:
             return raw_msg.split("clima", 1)[1].strip()
-    
+
     elif command_type == "busca":
         if lang == "en":
             return raw_msg.split("search", 1)[1].strip() if "search" in raw_msg.lower() else ""
@@ -753,7 +727,7 @@ def extract_command_argument(raw_msg, command_type, user):
             return raw_msg.split("cerca", 1)[1].strip() if "cerca" in raw_msg.lower() else ""
         else:
             return raw_msg.split("busca", 1)[1].strip()
-    
+
     elif command_type in ["define", "wikipedia"]:
         if lang == "en":
             return raw_msg.split("define", 1)[1].strip() if "define" in raw_msg.lower() else ""
@@ -764,10 +738,10 @@ def extract_command_argument(raw_msg, command_type, user):
         else:
             parts = raw_msg.split(" ", 2)
             return parts[2].strip() if len(parts) > 2 else ""
-    
+
     elif command_type == "snippet":
         return raw_msg.split("snippet", 1)[1].strip()
-    
+
     elif command_type == "ver script":
         if lang == "en":
             return raw_msg.split("view script", 1)[1].strip() if "view script" in raw_msg.lower() else ""
@@ -777,11 +751,11 @@ def extract_command_argument(raw_msg, command_type, user):
             return raw_msg.split("visualizza script", 1)[1].strip() if "visualizza script" in raw_msg.lower() else ""
         else:
             return raw_msg.split("ver script", 1)[1].strip()
-    
+
     return ""
 
 # --------------------------------------------------------
-# BÚSQUEDA WEB (DeepSeek -> Firecrawl fallback)
+# BÚSQUEDA WEB (Firecrawl)
 # --------------------------------------------------------
 def web_search_fallback(term):
     headers = {
@@ -806,10 +780,9 @@ def web_search_fallback(term):
             data = r.json()
             results = data.get("data", [])
             if results:
-                # Aplicamos clean_text a cada título
                 return [
-                    {"title": clean_text(x.get("title","")),
-                     "url": x.get("url","")}
+                    {"title": clean_text(x.get("title", "")),
+                     "url": x.get("url", "")}
                     for x in results
                 ]
     except Exception as e:
@@ -855,9 +828,8 @@ def obtener_clima(ciudad):
         temp = d["main"]["temp"]
         hum = d["main"]["humidity"]
         viento = d["wind"].get("speed", 0)
-        # construir texto limpio sin símbolo °
         texto = f"Clima en {ciudad}: {desc}. Temp {temp}C, Humedad {hum}%, Viento {viento} m/s."
-        return clean_text(texto)  # aquí aplicamos clean_text para quitar caracteres extra
+        return clean_text(texto)
     except Exception as e:
         return f"Error al obtener el clima: {str(e)}"
 
@@ -878,19 +850,16 @@ def obtener_eventos_seraphim(max_items=10):
         for e in feed.entries:
             if count >= max_items:
                 break
-            
-            # Filtrar por eventos (contiene palabras clave de eventos)
+
             titulo = clean_text(e.get("title", "Sin título"))
             link = e.get("link", "")
             descripcion = clean_text(e.get("description", ""))
-            
-            # Buscar palabras clave de eventos en título o descripción
-            palabras_evento = ["event", "evento", "festival", "concurso", "competition", 
-                             "show", "exhibition", "exposición", "party", "fiesta"]
-            
+
+            palabras_evento = ["event", "evento", "festival", "concurso", "competition",
+                               "show", "exhibition", "exposición", "party", "fiesta"]
+
             contenido = f"{titulo} {descripcion}".lower()
             if any(palabra in contenido for palabra in palabras_evento):
-                # Extraer fecha si está disponible
                 fecha = e.get("published", "")
                 if fecha:
                     try:
@@ -905,8 +874,8 @@ def obtener_eventos_seraphim(max_items=10):
 
         if not salida:
             return "No hay eventos próximos de Second Life en este momento."
-        
-        return f"{get_response('anon', 'events_title')}\n" + "\n".join(salida)
+
+        return "Proximos eventos:\n" + "\n".join(salida)
 
     except Exception as e:
         return f"Error al leer eventos de SeraphimSL: {e}"
@@ -939,7 +908,7 @@ def obtener_noticias_infobae(max_items=5):
                 salida.append(f"- {title_clean}: {link}")
                 count += 1
             except Exception:
-                continue  # saltar cualquier ítem con error
+                continue
 
         if not salida:
             return "No hay noticias disponibles de Infobae."
@@ -952,15 +921,14 @@ def obtener_noticias_infobae(max_items=5):
 # LLAMADA A API GROQ / DEEPSEEK
 # --------------------------------------------------------
 def call_llama_api(prompt, user_msg):
-    """Llama a la API de Groq/Llama"""
     if not GROQ_API_KEY:
         return "API de Groq no configurada."
-    
+
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json"
     }
-    
+
     data = {
         "model": LLAMA_MODEL,
         "messages": [
@@ -970,7 +938,7 @@ def call_llama_api(prompt, user_msg):
         "temperature": 0.7,
         "max_tokens": 1000
     }
-    
+
     try:
         response = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
@@ -978,26 +946,25 @@ def call_llama_api(prompt, user_msg):
             json=data,
             timeout=30
         )
-        
+
         if response.status_code == 200:
             result = response.json()
             return clean_text(result['choices'][0]['message']['content'])
         else:
             return f"Error en la API: {response.status_code} - {response.text}"
-            
+
     except Exception as e:
         return f"Error al conectar con la API: {str(e)}"
 
 def call_deepseek_api(prompt, user_msg):
-    """Llama a la API de DeepSeek"""
     if not DEEPSEEK_API_KEY:
         return "API de DeepSeek no configurada."
-    
+
     headers = {
         "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
         "Content-Type": "application/json"
     }
-    
+
     data = {
         "model": DEEPSEEK_MODEL,
         "messages": [
@@ -1007,7 +974,7 @@ def call_deepseek_api(prompt, user_msg):
         "temperature": 0.7,
         "max_tokens": 1000
     }
-    
+
     try:
         response = requests.post(
             "https://api.deepseek.com/v1/chat/completions",
@@ -1015,15 +982,29 @@ def call_deepseek_api(prompt, user_msg):
             json=data,
             timeout=30
         )
-        
+
         if response.status_code == 200:
             result = response.json()
             return clean_text(result['choices'][0]['message']['content'])
         else:
             return f"Error en la API DeepSeek: {response.status_code}"
-            
+
     except Exception as e:
         return f"Error al conectar con DeepSeek: {str(e)}"
+
+# --------------------------------------------------------
+# ZENKO UPDATE SYSTEM
+# --------------------------------------------------------
+ADMIN_UUID  = "7e8a1bf1-184b-4c23-9cd7-8b41c6f9e8e7"
+MIN_VERSION = int(os.getenv("MIN_VERSION", "1"))
+
+pending_updates = set()
+pending_lock    = threading.Lock()
+blacklist       = set()
+blacklist_lock  = threading.Lock()
+
+def is_admin(user):
+    return user == ADMIN_UUID
 
 # --------------------------------------------------------
 # RUTA PRINCIPAL DE CHAT
@@ -1040,37 +1021,83 @@ def chat():
     reply = get_response(user, "command_not_found")
     modelo = sessions[user].get("model", "llama")
 
-    # COMANDO: cambiar modelo
+    # ── Comandos Admin ─────────────────────────────────
+    if m.startswith("@zenko update ") and is_admin(user):
+        parts = m.split()
+        if len(parts) == 3 and parts[2].isdigit():
+            global MIN_VERSION
+            MIN_VERSION = int(parts[2])
+            return jsonify({"reply": f"Version minima actualizada a {MIN_VERSION}."})
+        return jsonify({"reply": "Uso: @zenko update <numero>"})
+
+    if m == "@zenko version" and is_admin(user):
+        return jsonify({"reply": f"MIN_VERSION actual: {MIN_VERSION}"})
+
+    if m == "@zenko hud list" and is_admin(user):
+        with pending_lock:
+            if not pending_updates:
+                return jsonify({"reply": "No hay pendientes."})
+            return jsonify({"reply": "Pendientes:\n" + "\n".join(pending_updates)})
+
+    if m.startswith("@zenko hud clear ") and is_admin(user):
+        target = m.replace("@zenko hud clear ", "").strip()
+        with pending_lock:
+            pending_updates.discard(target)
+        return jsonify({"reply": f"Removido: {target}"})
+
+    if m == "@zenko hud clearall" and is_admin(user):
+        with pending_lock:
+            pending_updates.clear()
+        return jsonify({"reply": "Lista vaciada."})
+
+    if m.startswith("@zenko ban ") and is_admin(user):
+        target = m.replace("@zenko ban ", "").strip()
+        with blacklist_lock:
+            blacklist.add(target)
+        return jsonify({"reply": f"Baneado: {target}"})
+
+    if m.startswith("@zenko unban ") and is_admin(user):
+        target = m.replace("@zenko unban ", "").strip()
+        with blacklist_lock:
+            blacklist.discard(target)
+        return jsonify({"reply": f"Desbaneado: {target}"})
+
+    if m == "@zenko ban list" and is_admin(user):
+        with blacklist_lock:
+            if not blacklist:
+                return jsonify({"reply": "No hay baneados."})
+            return jsonify({"reply": "Baneados:\n" + "\n".join(blacklist)})
+
+    # ── Cambio de modelo ───────────────────────────────
     if m.startswith("@zenko llama"):
         sessions[user]["model"] = "llama"
         return jsonify({"reply": get_response(user, "model_changed", "Llama")})
     if m.startswith("@zenko deepseek"):
         sessions[user]["model"] = "deepseek"
         return jsonify({"reply": get_response(user, "model_changed", "DeepSeek")})
-    
-    # DETECTAR COMANDOS EN EL IDIOMA DEL USUARIO
-    command_type = detect_command(raw_msg, user)
-    
-    # CAMBIO DE IDIOMA (siempre funciona igual)
+
+    # ── Cambio de idioma ───────────────────────────────
     if m.startswith("@zenko "):
         maybe = m.replace("@zenko ", "").strip()
         if maybe in ["es", "en", "fr", "it"]:
             sessions[user]["lang"] = maybe
             return jsonify({"reply": get_response(user, "language_changed")})
 
-    # PROCESAR COMANDOS DETECTADOS
+    # ── Detección de comandos ──────────────────────────
+    command_type = detect_command(raw_msg, user)
+
     if command_type == "funciones":
         commands = get_commands(user)
         salida = [f"{clean_text(cmd)}: {clean_text(desc)}" for cmd, desc in commands.items()]
         texto = f"{get_response(user, 'commands_list')}\n" + "\n".join(salida)
         return Response(json.dumps({"reply": clean_text(texto)}, ensure_ascii=False), mimetype="application/json")
-    
+
     elif command_type == "clima":
         ciudad = extract_command_argument(raw_msg, "clima", user)
         if not ciudad:
             return jsonify({"reply": clean_text(get_response(user, "no_city"))})
         return jsonify({"reply": clean_text(obtener_clima(ciudad))})
-    
+
     elif command_type == "busca":
         termino = extract_command_argument(raw_msg, "busca", user)
         if not termino:
@@ -1080,22 +1107,21 @@ def chat():
             return jsonify({"reply": clean_text(get_response(user, "no_results", termino))})
         out = [f"{r['title']}: {r['url']}" for r in res]
         return jsonify({"reply": clean_text(f"{get_response(user, 'search_results')}\n" + "\n".join(out))})
-    
+
     elif command_type in ["define", "wikipedia"]:
         term = extract_command_argument(raw_msg, "define", user)
         if not term:
             return jsonify({"reply": clean_text(get_response(user, "no_wiki_term"))})
         return jsonify({"reply": clean_text(wiki_summary(term))})
-    
+
     elif command_type == "snippet":
         tipo = extract_command_argument(raw_msg, "snippet", user)
         s = LSL_SNIPPETS.get(tipo)
         if not s:
             return jsonify({"reply": clean_text(get_response(user, "no_snippet_type", tipo))})
-        return jsonify({"reply": s})  # Los snippets no necesitan clean_text
-    
+        return jsonify({"reply": s})
+
     elif command_type == "guarda script":
-        # Extraer script del mensaje
         parts = raw_msg.split("@zenko guarda script", 1)
         if len(parts) > 1:
             script = parts[1].strip()
@@ -1103,61 +1129,58 @@ def chat():
                 sid = guardar_script(user, script)
                 return jsonify({"reply": clean_text(get_response(user, "script_saved", sid))})
         return jsonify({"reply": clean_text("Envía el script después del comando.")})
-    
+
     elif command_type == "lista scripts":
         keys = listar_scripts(user)
         if not keys:
             return jsonify({"reply": clean_text(get_response(user, "no_scripts"))})
         return jsonify({"reply": clean_text(f"{get_response(user, 'scripts_list')}\n" + "\n".join(keys))})
-    
+
     elif command_type == "ver script":
         sid = extract_command_argument(raw_msg, "ver script", user)
         s = ver_script(user, sid)
         if not s:
             return jsonify({"reply": clean_text(get_response(user, "script_not_found", sid))})
-        return jsonify({"reply": s})  # Los scripts ya tienen clean_text al guardarse
-    
+        return jsonify({"reply": s})
+
     elif command_type == "historial":
         return jsonify({"reply": clean_text(historial_resumen(user))})
-    
+
     elif command_type == "lsl_on":
         sessions[user]["lsl_mode"] = True
         agregar_historial(user, "Modo LSL activado")
         return jsonify({"reply": clean_text(get_response(user, "lsl_on"))})
-    
+
     elif command_type == "lsl_off":
         sessions[user]["lsl_mode"] = False
         agregar_historial(user, "Modo LSL desactivado")
         return jsonify({"reply": clean_text(get_response(user, "lsl_off"))})
-    
+
     elif command_type == "eventos":
         reply = obtener_eventos_seraphim(max_items=10)
         return jsonify({"reply": clean_text(reply)})
-    
-    # COMANDOS ESPECIALES (RSS) - mantienen nombres en español pero funcionan en todos idiomas
+
+    # ── Comandos RSS especiales ────────────────────────
     if msg.strip().lower() in ("@zenko event", "@zenko eventos"):
         reply = obtener_eventos_seraphim(max_items=10)
         return jsonify({"reply": clean_text(reply)})
-        
+
     if msg.startswith("@zenko news") or msg.startswith("@zenko noticias"):
         reply = obtener_noticias_infobae(5)
         if not reply:
             reply = "DEBUG: obtener_noticias_infobae devolvio VACIO"
         return jsonify({"reply": clean_text(reply)})
-    
-    # -------------------------------
-    # Mensajes normales / preguntas abiertas
-    # -------------------------------
+
+    # ── Chat libre ─────────────────────────────────────
     if reply == get_response(user, "command_not_found"):
         modelo = sessions[user].get("model", "llama")
-        
-        # forzar que chat libre use Llama, incluso si user eligió DeepSeek
+
+        # forzar Llama para chat libre incluso si user eligió DeepSeek
         if modelo == "deepseek":
             modelo = "llama"
 
         try:
             if modelo == "llama":
-                # Obtener el prompt en el idioma del usuario
                 prompt_base = get_prompt(user)
                 reply = call_llama_api(prompt_base, msg)
             elif modelo == "deepseek":
@@ -1165,50 +1188,15 @@ def chat():
                 reply = call_deepseek_api(prompt_base, msg)
             else:
                 reply = "Modelo no configurado correctamente."
-                
+
         except Exception as e:
             reply = f"Error procesando tu mensaje: {str(e)}"
 
     return jsonify({"reply": clean_text(reply)})
 
 # --------------------------------------------------------
-# RUTA DE ESTADO
+# RUTAS UPDATE SYSTEM
 # --------------------------------------------------------
-@app.route("/status", methods=["GET"])
-def status():
-    return jsonify({
-        "status": "online",
-        "version": "2.0",
-        "multi_language": True,
-        "supported_languages": ["es", "en", "fr", "it"],
-        "active_sessions": len(sessions)
-    })
-    
-# --------------------------------------------------------
-# RUTA PING (para mantener Render despierto)
-# --------------------------------------------------------
-@app.route("/ping", methods=["GET"])
-def ping():
-    return "Zenko awake"
-
-# --------------------------------------------------------
-# ZENKO UPDATE SYSTEM
-# --------------------------------------------------------
-import threading
-
-ADMIN_UUID  = "7e8a1bf1-184b-4c23-9cd7-8b41c6f9e8e7"
-MIN_VERSION = int(os.getenv("MIN_VERSION", "1"))
-
-pending_updates = set()
-pending_lock    = threading.Lock()
-blacklist       = set()
-blacklist_lock  = threading.Lock()
-
-def is_admin(user):
-    return user == ADMIN_UUID
-
-# ── Endpoints ──────────────────────────────────────────
-
 @app.route("/version", methods=["GET"])
 def get_version():
     owner = request.args.get("owner", "").strip()
@@ -1249,55 +1237,22 @@ def clear_pending():
         pending_updates.discard(owner_uuid)
     return jsonify({"status": "cleared", "owner": owner_uuid})
 
-# ── Admin commands en /chat ────────────────────────────
-# Pega este bloque DENTRO de la funcion chat(),
-# ANTES del bloque de comandos normales (antes del if m.startswith("@zenko "))
+# --------------------------------------------------------
+# RUTAS DE ESTADO / PING
+# --------------------------------------------------------
+@app.route("/status", methods=["GET"])
+def status():
+    return jsonify({
+        "status": "online",
+        "version": "2.0",
+        "multi_language": True,
+        "supported_languages": ["es", "en", "fr", "it"],
+        "active_sessions": len(sessions)
+    })
 
-# if m.startswith("@zenko update ") and is_admin(user):
-#     parts = m.split()
-#     if len(parts) == 3 and parts[2].isdigit():
-#         global MIN_VERSION
-#         MIN_VERSION = int(parts[2])
-#         return jsonify({"reply": f"Version minima actualizada a {MIN_VERSION}."})
-#     return jsonify({"reply": "Uso: @zenko update <numero>"})
-#
-# if m == "@zenko version" and is_admin(user):
-#     return jsonify({"reply": f"MIN_VERSION actual: {MIN_VERSION}"})
-#
-# if m == "@zenko hud list" and is_admin(user):
-#     with pending_lock:
-#         if not pending_updates:
-#             return jsonify({"reply": "No hay pendientes."})
-#         return jsonify({"reply": "Pendientes:\n" + "\n".join(pending_updates)})
-#
-# if m.startswith("@zenko hud clear ") and is_admin(user):
-#     target = m.replace("@zenko hud clear ", "").strip()
-#     with pending_lock:
-#         pending_updates.discard(target)
-#     return jsonify({"reply": f"Removido: {target}"})
-#
-# if m == "@zenko hud clearall" and is_admin(user):
-#     with pending_lock:
-#         pending_updates.clear()
-#     return jsonify({"reply": "Lista vaciada."})
-#
-# if m.startswith("@zenko ban ") and is_admin(user):
-#     target = m.replace("@zenko ban ", "").strip()
-#     with blacklist_lock:
-#         blacklist.add(target)
-#     return jsonify({"reply": f"Baneado: {target}"})
-#
-# if m.startswith("@zenko unban ") and is_admin(user):
-#     target = m.replace("@zenko unban ", "").strip()
-#     with blacklist_lock:
-#         blacklist.discard(target)
-#     return jsonify({"reply": f"Desbaneado: {target}"})
-#
-# if m == "@zenko ban list" and is_admin(user):
-#     with blacklist_lock:
-#         if not blacklist:
-#             return jsonify({"reply": "No hay baneados."})
-#         return jsonify({"reply": "Baneados:\n" + "\n".join(blacklist)})
+@app.route("/ping", methods=["GET"])
+def ping():
+    return "Zenko awake"
 
 # --------------------------------------------------------
 # EJECUCIÓN
@@ -1305,9 +1260,3 @@ def clear_pending():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
-
-
-
-
-
-
