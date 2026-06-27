@@ -89,7 +89,7 @@ LANGUAGE_CONFIGS = {
             "weather_title": "Clima en {}", "news_title": "Últimas noticias:",
             "events_title": "Próximos eventos:",
             "events_not_found": "No hay eventos disponibles en este momento.",
-            "events_error": "Error al obtener eventos: {}"
+            "events_error": "Error al obtener eventos: {}",
         }
     },
     "en": {
@@ -165,7 +165,7 @@ LANGUAGE_CONFIGS = {
             "weather_title": "Weather in {}", "news_title": "Latest news:",
             "events_title": "Upcoming events:",
             "events_not_found": "No events available at the moment.",
-            "events_error": "Error getting events: {}"
+            "events_error": "Error getting events: {}",
         }
     },
     "fr": {
@@ -241,7 +241,7 @@ LANGUAGE_CONFIGS = {
             "weather_title": "Météo à {}", "news_title": "Dernières actualités:",
             "events_title": "Événements à venir:",
             "events_not_found": "Aucun événement disponible pour le moment.",
-            "events_error": "Erreur lors de l'obtention des événements: {}"
+            "events_error": "Erreur lors de l'obtention des événements: {}",
         }
     },
     "it": {
@@ -317,7 +317,7 @@ LANGUAGE_CONFIGS = {
             "weather_title": "Meteo a {}", "news_title": "Ultime notizie:",
             "events_title": "Eventi imminenti:",
             "events_not_found": "Nessun evento disponibile al momento.",
-            "events_error": "Errore nell'ottenere gli eventi: {}"
+            "events_error": "Errore nell'ottenere gli eventi: {}",
         }
     }
 }
