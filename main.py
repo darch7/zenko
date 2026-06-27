@@ -985,6 +985,15 @@ def clear_pending():
         pending_updates.discard(owner_uuid)
     return jsonify({"status": "cleared", "owner": owner_uuid})
 
+@app.route("/confirm", methods=["POST"])
+def confirm_update():
+    data = request.json or {}
+    owner_uuid = data.get("owner", "").strip()
+    if not owner_uuid:
+        return jsonify({"error": "missing owner"}), 400
+    with pending_lock:
+        pending_updates.discard(owner_uuid)
+    return jsonify({"status": "confirmed", "owner": owner_uuid})
 # --------------------------------------------------------
 # ESTADO / PING
 # --------------------------------------------------------
