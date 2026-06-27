@@ -800,31 +800,7 @@ def chat():
     ensure_session(user)
     reply = get_response(user, "command_not_found")
 
-# ── Panel Admin ────────────────────────────────────
-    if m == "@zenko panel" and is_admin(user):
-        panel = [
-            "=== PANEL DE ADMINISTRACION ZENKO ===",
-            "",
-            "[ VERSION ]",
-            "  @zenko version              -> Ver MIN_VERSION actual",
-            "  @zenko update <n>           -> Cambiar MIN_VERSION",
-            "",
-            "[ HUD / ACTUALIZACIONES ]",
-            "  @zenko hud list             -> Ver UUIDs con update pendiente",
-            "  @zenko hud clear <uuid>     -> Remover UUID de pendientes",
-            "  @zenko hud clearall         -> Vaciar todos los pendientes",
-            "",
-            "[ BLACKLIST ]",
-            "  @zenko ban <uuid>           -> Banear UUID",
-            "  @zenko ban list             -> Ver lista de baneados",
-            "  @zenko unban <uuid>         -> Desbanear UUID",
-            "",
-            "[ SISTEMA ]",
-            "  @zenko panel                -> Mostrar este panel",
-            "  @zenko version              -> Ver version minima activa",
-        ]
-        return jsonify({"reply": "\n".join(panel)})    
-# ── Panel Admin ────────────────────────────────────
+    # ── Panel Admin ────────────────────────────────────
     if m == "@zenko panel" and is_admin(user):
         return jsonify({"reply": get_response(user, "admin_panel")})
 
