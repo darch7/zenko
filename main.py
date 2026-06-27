@@ -33,6 +33,33 @@ LANGUAGE_CONFIGS = {
             "@zenko lsl on": "Activar el modo LSL para análisis y reescritura de scripts.",
             "@zenko lsl off": "Desactivar el modo LSL.",
             "@zenko news": "Obtener noticias de Infobae (alternativa a noticias)."
+            "admin_panel": (
+            "=== PANEL DE ADMINISTRACION ZENKO ===\n\n"
+            "[ VERSION ]\n"
+            "  @zenko version              -> Ver MIN_VERSION actual\n"
+            "  @zenko update <n>           -> Cambiar MIN_VERSION\n\n"
+            "[ HUD / ACTUALIZACIONES ]\n"
+            "  @zenko hud list             -> Ver UUIDs con update pendiente\n"
+            "  @zenko hud clear <uuid>     -> Remover UUID de pendientes\n"
+            "  @zenko hud clearall         -> Vaciar todos los pendientes\n\n"
+            "[ BLACKLIST ]\n"
+            "  @zenko ban <uuid>           -> Banear UUID\n"
+            "  @zenko ban list             -> Ver lista de baneados\n"
+            "  @zenko unban <uuid>         -> Desbanear UUID\n\n"
+            "[ SISTEMA ]\n"
+            "  @zenko panel                -> Mostrar este panel"
+        ),
+        "admin_version":    "MIN_VERSION actual: {}",
+        "admin_updated":    "Version minima actualizada a {}.",
+        "admin_update_uso": "Uso: @zenko update <numero>",
+        "admin_no_pending": "No hay pendientes.",
+        "admin_pending":    "Pendientes:\n{}",
+        "admin_removed":    "Removido: {}",
+        "admin_cleared":    "Lista vaciada.",
+        "admin_unbanned":   "Desbaneado: {}",
+        "admin_banned":     "Baneado: {}",
+        "admin_no_banned":  "No hay baneados.",
+        "admin_ban_list":   "Baneados:\n{}",
         },
         "keywords": {
             "funciones": "funciones", "clima": "clima", "noticias": "noticias",
@@ -82,6 +109,33 @@ LANGUAGE_CONFIGS = {
             "@zenko lsl on": "Activate LSL mode for script analysis and rewriting.",
             "@zenko lsl off": "Deactivate LSL mode.",
             "@zenko noticias": "Get news from Infobae (alternative to news)."
+            "admin_panel": (
+            "=== ZENKO ADMIN PANEL ===\n\n"
+            "[ VERSION ]\n"
+            "  @zenko version              -> View current MIN_VERSION\n"
+            "  @zenko update <n>           -> Change MIN_VERSION\n\n"
+            "[ HUD / UPDATES ]\n"
+            "  @zenko hud list             -> View UUIDs with pending update\n"
+            "  @zenko hud clear <uuid>     -> Remove UUID from pending\n"
+            "  @zenko hud clearall         -> Clear all pending\n\n"
+            "[ BLACKLIST ]\n"
+            "  @zenko ban <uuid>           -> Ban UUID\n"
+            "  @zenko ban list             -> View banned list\n"
+            "  @zenko unban <uuid>         -> Unban UUID\n\n"
+            "[ SYSTEM ]\n"
+            "  @zenko panel                -> Show this panel"
+        ),
+        "admin_version":    "Current MIN_VERSION: {}",
+        "admin_updated":    "Minimum version updated to {}.",
+        "admin_update_uso": "Usage: @zenko update <number>",
+        "admin_no_pending": "No pending updates.",
+        "admin_pending":    "Pending:\n{}",
+        "admin_removed":    "Removed: {}",
+        "admin_cleared":    "List cleared.",
+        "admin_unbanned":   "Unbanned: {}",
+        "admin_banned":     "Banned: {}",
+        "admin_no_banned":  "No banned users.",
+        "admin_ban_list":   "Banned:\n{}",
         },
         "keywords": {
             "funciones": "functions", "clima": "weather", "noticias": "news",
@@ -131,6 +185,33 @@ LANGUAGE_CONFIGS = {
             "@zenko lsl on": "Activer le mode LSL pour l'analyse et la réécriture de scripts.",
             "@zenko lsl off": "Désactiver le mode LSL.",
             "@zenko noticias": "Obtenir les actualités d'Infobae (alternative à actualités)."
+            "admin_panel": (
+            "=== PANNEAU ADMIN ZENKO ===\n\n"
+            "[ VERSION ]\n"
+            "  @zenko version              -> Voir MIN_VERSION actuelle\n"
+            "  @zenko update <n>           -> Changer MIN_VERSION\n\n"
+            "[ HUD / MISES A JOUR ]\n"
+            "  @zenko hud list             -> Voir UUIDs en attente\n"
+            "  @zenko hud clear <uuid>     -> Retirer UUID des attentes\n"
+            "  @zenko hud clearall         -> Vider toutes les attentes\n\n"
+            "[ LISTE NOIRE ]\n"
+            "  @zenko ban <uuid>           -> Bannir UUID\n"
+            "  @zenko ban list             -> Voir liste des bannis\n"
+            "  @zenko unban <uuid>         -> Débannir UUID\n\n"
+            "[ SYSTEME ]\n"
+            "  @zenko panel                -> Afficher ce panneau"
+        ),
+        "admin_version":    "MIN_VERSION actuelle: {}",
+        "admin_updated":    "Version minimale mise a jour: {}.",
+        "admin_update_uso": "Usage: @zenko update <nombre>",
+        "admin_no_pending": "Aucune mise a jour en attente.",
+        "admin_pending":    "En attente:\n{}",
+        "admin_removed":    "Retire: {}",
+        "admin_cleared":    "Liste videe.",
+        "admin_unbanned":   "Debanni: {}",
+        "admin_banned":     "Banni: {}",
+        "admin_no_banned":  "Aucun utilisateur banni.",
+        "admin_ban_list":   "Bannis:\n{}",
         },
         "keywords": {
             "funciones": "fonctions", "clima": "météo", "noticias": "actualités",
@@ -180,6 +261,33 @@ LANGUAGE_CONFIGS = {
             "@zenko lsl on": "Attiva la modalità LSL per l'analisi e la riscrittura degli script.",
             "@zenko lsl off": "Disattiva la modalità LSL.",
             "@zenko news": "Ottieni notizie da Infobae (alternativa a notizie)."
+            "admin_panel": (
+            "=== PANNELLO ADMIN ZENKO ===\n\n"
+            "[ VERSIONE ]\n"
+            "  @zenko version              -> Vedere MIN_VERSION attuale\n"
+            "  @zenko update <n>           -> Cambiare MIN_VERSION\n\n"
+            "[ HUD / AGGIORNAMENTI ]\n"
+            "  @zenko hud list             -> Vedere UUID con aggiornamento in attesa\n"
+            "  @zenko hud clear <uuid>     -> Rimuovere UUID dai pendenti\n"
+            "  @zenko hud clearall         -> Svuotare tutti i pendenti\n\n"
+            "[ LISTA NERA ]\n"
+            "  @zenko ban <uuid>           -> Bannare UUID\n"
+            "  @zenko ban list             -> Vedere lista dei bannati\n"
+            "  @zenko unban <uuid>         -> Sbannare UUID\n\n"
+            "[ SISTEMA ]\n"
+            "  @zenko panel                -> Mostrare questo pannello"
+        ),
+        "admin_version":    "MIN_VERSION attuale: {}",
+        "admin_updated":    "Versione minima aggiornata a {}.",
+        "admin_update_uso": "Uso: @zenko update <numero>",
+        "admin_no_pending": "Nessun aggiornamento in attesa.",
+        "admin_pending":    "In attesa:\n{}",
+        "admin_removed":    "Rimosso: {}",
+        "admin_cleared":    "Lista svuotata.",
+        "admin_unbanned":   "Sbannato: {}",
+        "admin_banned":     "Bannato: {}",
+        "admin_no_banned":  "Nessun utente bannato.",
+        "admin_ban_list":   "Bannati:\n{}",
         },
         "keywords": {
             "funciones": "funzioni", "clima": "meteo", "noticias": "notizie",
@@ -775,53 +883,56 @@ def chat():
             "  @zenko version              -> Ver version minima activa",
         ]
         return jsonify({"reply": "\n".join(panel)})    
+# ── Panel Admin ────────────────────────────────────
+    if m == "@zenko panel" and is_admin(user):
+        return jsonify({"reply": get_response(user, "admin_panel")})
+
     # ── Comandos Admin ─────────────────────────────────
     if m.startswith("@zenko update ") and is_admin(user):
         parts = m.split()
         if len(parts) == 3 and parts[2].isdigit():
             global MIN_VERSION
             MIN_VERSION = int(parts[2])
-            return jsonify({"reply": f"Version minima actualizada a {MIN_VERSION}."})
-        return jsonify({"reply": "Uso: @zenko update <numero>"})
+            return jsonify({"reply": get_response(user, "admin_updated", MIN_VERSION)})
+        return jsonify({"reply": get_response(user, "admin_update_uso")})
 
     if m == "@zenko version" and is_admin(user):
-        return jsonify({"reply": f"MIN_VERSION actual: {MIN_VERSION}"})
+        return jsonify({"reply": get_response(user, "admin_version", MIN_VERSION)})
 
     if m == "@zenko hud list" and is_admin(user):
         with pending_lock:
             if not pending_updates:
-                return jsonify({"reply": "No hay pendientes."})
-            return jsonify({"reply": "Pendientes:\n" + "\n".join(pending_updates)})
+                return jsonify({"reply": get_response(user, "admin_no_pending")})
+            return jsonify({"reply": get_response(user, "admin_pending", "\n".join(pending_updates))})
 
     if m.startswith("@zenko hud clear ") and is_admin(user):
         target = m.replace("@zenko hud clear ", "").strip()
         with pending_lock:
             pending_updates.discard(target)
-        return jsonify({"reply": f"Removido: {target}"})
+        return jsonify({"reply": get_response(user, "admin_removed", target)})
 
     if m == "@zenko hud clearall" and is_admin(user):
         with pending_lock:
             pending_updates.clear()
-        return jsonify({"reply": "Lista vaciada."})
+        return jsonify({"reply": get_response(user, "admin_cleared")})
 
     if m.startswith("@zenko unban ") and is_admin(user):
         target = m.replace("@zenko unban ", "").strip()
         with blacklist_lock:
             blacklist.discard(target)
-        return jsonify({"reply": f"Desbaneado: {target}"})
+        return jsonify({"reply": get_response(user, "admin_unbanned", target)})
 
-    # ── ban list ANTES de ban <uuid> para evitar el conflicto de startswith ──
     if m == "@zenko ban list" and is_admin(user):
         with blacklist_lock:
             if not blacklist:
-                return jsonify({"reply": "No hay baneados."})
-            return jsonify({"reply": "Baneados:\n" + "\n".join(blacklist)})
+                return jsonify({"reply": get_response(user, "admin_no_banned")})
+            return jsonify({"reply": get_response(user, "admin_ban_list", "\n".join(blacklist))})
 
     if m.startswith("@zenko ban ") and is_admin(user):
         target = m.replace("@zenko ban ", "").strip()
         with blacklist_lock:
             blacklist.add(target)
-        return jsonify({"reply": f"Baneado: {target}"})
+        return jsonify({"reply": get_response(user, "admin_banned", target)})
 
     # ── Cambio de modelo ───────────────────────────────
     if m.startswith("@zenko llama"):
