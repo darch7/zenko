@@ -63,7 +63,7 @@ LANGUAGE_CONFIGS = {
             "events_title": "Próximos eventos:",
             "events_not_found": "No hay eventos disponibles en este momento.",
             "events_error": "Error al obtener eventos: {}",
-            "admin_panel": "=== PANEL DE ADMINISTRACION ZENKO ===\n\n[ VERSION ]\n  @zenko version              -> Ver MIN_VERSION actual\n  @zenko update <n>           -> Cambiar MIN_VERSION\n\n[ HUD / ACTUALIZACIONES ]\n  @zenko hud list             -> Ver UUIDs con update pendiente\n  @zenko hud clear <uuid>     -> Remover UUID de pendientes\n  @zenko hud clearall         -> Vaciar todos los pendientes\n\n[ BLACKLIST ]\n  @zenko ban <uuid>           -> Banear UUID\n  @zenko ban list             -> Ver lista de baneados\n  @zenko unban <uuid>         -> Desbanear UUID\n\n[ SISTEMA ]\n  @zenko panel                -> Mostrar este panel",
+            "admin_panel": "=== PANEL DE ADMINISTRACION ZENKO ===\n\n[ VERSION ]\n  @zenko version              -> Ver MIN_VERSION actual\n  @zenko update <n>           -> Cambiar MIN_VERSION\n\n[ HUD / ACTUALIZACIONES ]\n  @zenko hud list             -> Ver UUIDs con update pendiente\n  @zenko hud clear <uuid>     -> Remover UUID de pendientes\n  @zenko hud clearall         -> Vaciar todos los pendientes\n  @zenko hud add <uuid>       -> Encolar UUID para entrega remota\n  @zenko list                 -> Ver todos los UUID registrados\n\n[ BLACKLIST ]\n  @zenko ban <uuid>           -> Banear UUID\n  @zenko ban list             -> Ver lista de baneados\n  @zenko unban <uuid>         -> Desbanear UUID\n\n[ SISTEMA ]\n  @zenko panel                -> Mostrar este panel",
             "admin_version":    "MIN_VERSION actual: {}",
             "admin_updated":    "Version minima actualizada a {}.",
             "admin_update_uso": "Uso: @zenko update <numero>",
@@ -74,7 +74,11 @@ LANGUAGE_CONFIGS = {
             "admin_unbanned":   "Desbaneado: {}",
             "admin_banned":     "Baneado: {}",
             "admin_no_banned":  "No hay baneados.",
-            "admin_ban_list":   "Baneados:\n{}"
+            "admin_ban_list":   "Baneados:\n{}",
+            "admin_known_list": "UUIDs registrados:\n{}",
+            "admin_no_known":   "No hay UUIDs registrados todavia.",
+            "admin_hud_added":  "Agregado a pendientes de entrega: {}",
+            "admin_hud_add_uso":"Uso: @zenko hud add <uuid>"
         }
     },
     "en": {
@@ -124,7 +128,7 @@ LANGUAGE_CONFIGS = {
             "events_title": "Upcoming events:",
             "events_not_found": "No events available at the moment.",
             "events_error": "Error getting events: {}",
-            "admin_panel": "=== ZENKO ADMIN PANEL ===\n\n[ VERSION ]\n  @zenko version              -> View current MIN_VERSION\n  @zenko update <n>           -> Change MIN_VERSION\n\n[ HUD / UPDATES ]\n  @zenko hud list             -> View UUIDs with pending update\n  @zenko hud clear <uuid>     -> Remove UUID from pending\n  @zenko hud clearall         -> Clear all pending\n\n[ BLACKLIST ]\n  @zenko ban <uuid>           -> Ban UUID\n  @zenko ban list             -> View banned list\n  @zenko unban <uuid>         -> Unban UUID\n\n[ SYSTEM ]\n  @zenko panel                -> Show this panel",
+            "admin_panel": "=== ZENKO ADMIN PANEL ===\n\n[ VERSION ]\n  @zenko version              -> View current MIN_VERSION\n  @zenko update <n>           -> Change MIN_VERSION\n\n[ HUD / UPDATES ]\n  @zenko hud list             -> View UUIDs with pending update\n  @zenko hud clear <uuid>     -> Remove UUID from pending\n  @zenko hud clearall         -> Clear all pending\n  @zenko hud add <uuid>       -> Queue UUID for remote delivery\n  @zenko list                 -> View all registered UUIDs\n\n[ BLACKLIST ]\n  @zenko ban <uuid>           -> Ban UUID\n  @zenko ban list             -> View banned list\n  @zenko unban <uuid>         -> Unban UUID\n\n[ SYSTEM ]\n  @zenko panel                -> Show this panel",
             "admin_version":    "Current MIN_VERSION: {}",
             "admin_updated":    "Minimum version updated to {}.",
             "admin_update_uso": "Usage: @zenko update <number>",
@@ -135,7 +139,11 @@ LANGUAGE_CONFIGS = {
             "admin_unbanned":   "Unbanned: {}",
             "admin_banned":     "Banned: {}",
             "admin_no_banned":  "No banned users.",
-            "admin_ban_list":   "Banned:\n{}"
+            "admin_ban_list":   "Banned:\n{}",
+            "admin_known_list": "Registered UUIDs:\n{}",
+            "admin_no_known":   "No UUIDs registered yet.",
+            "admin_hud_added":  "Added to delivery pending: {}",
+            "admin_hud_add_uso":"Usage: @zenko hud add <uuid>"
         }
     },
     "fr": {
@@ -185,7 +193,7 @@ LANGUAGE_CONFIGS = {
             "events_title": "Événements à venir:",
             "events_not_found": "Aucun événement disponible pour le moment.",
             "events_error": "Erreur lors de l'obtention des événements: {}",
-            "admin_panel": "=== PANNEAU ADMIN ZENKO ===\n\n[ VERSION ]\n  @zenko version              -> Voir MIN_VERSION actuelle\n  @zenko update <n>           -> Changer MIN_VERSION\n\n[ HUD / MISES A JOUR ]\n  @zenko hud list             -> Voir UUIDs en attente\n  @zenko hud clear <uuid>     -> Retirer UUID des attentes\n  @zenko hud clearall         -> Vider toutes les attentes\n\n[ LISTE NOIRE ]\n  @zenko ban <uuid>           -> Bannir UUID\n  @zenko ban list             -> Voir liste des bannis\n  @zenko unban <uuid>         -> Debannir UUID\n\n[ SYSTEME ]\n  @zenko panel                -> Afficher ce panneau",
+            "admin_panel": "=== PANNEAU ADMIN ZENKO ===\n\n[ VERSION ]\n  @zenko version              -> Voir MIN_VERSION actuelle\n  @zenko update <n>           -> Changer MIN_VERSION\n\n[ HUD / MISES A JOUR ]\n  @zenko hud list             -> Voir UUIDs en attente\n  @zenko hud clear <uuid>     -> Retirer UUID des attentes\n  @zenko hud clearall         -> Vider toutes les attentes\n  @zenko hud add <uuid>       -> Mettre UUID en attente de livraison\n  @zenko list                 -> Voir tous les UUID enregistrés\n\n[ LISTE NOIRE ]\n  @zenko ban <uuid>           -> Bannir UUID\n  @zenko ban list             -> Voir liste des bannis\n  @zenko unban <uuid>         -> Debannir UUID\n\n[ SYSTEME ]\n  @zenko panel                -> Afficher ce panneau",
             "admin_version":    "MIN_VERSION actuelle: {}",
             "admin_updated":    "Version minimale mise a jour: {}.",
             "admin_update_uso": "Usage: @zenko update <nombre>",
@@ -196,7 +204,11 @@ LANGUAGE_CONFIGS = {
             "admin_unbanned":   "Debanni: {}",
             "admin_banned":     "Banni: {}",
             "admin_no_banned":  "Aucun utilisateur banni.",
-            "admin_ban_list":   "Bannis:\n{}"
+            "admin_ban_list":   "Bannis:\n{}",
+            "admin_known_list": "UUIDs enregistrés:\n{}",
+            "admin_no_known":   "Aucun UUID enregistré pour le moment.",
+            "admin_hud_added":  "Ajouté aux livraisons en attente: {}",
+            "admin_hud_add_uso":"Usage: @zenko hud add <uuid>"
         }
     },
     "it": {
@@ -246,7 +258,7 @@ LANGUAGE_CONFIGS = {
             "events_title": "Eventi imminenti:",
             "events_not_found": "Nessun evento disponibile al momento.",
             "events_error": "Errore nell'ottenere gli eventi: {}",
-            "admin_panel": "=== PANNELLO ADMIN ZENKO ===\n\n[ VERSIONE ]\n  @zenko version              -> Vedere MIN_VERSION attuale\n  @zenko update <n>           -> Cambiare MIN_VERSION\n\n[ HUD / AGGIORNAMENTI ]\n  @zenko hud list             -> Vedere UUID con aggiornamento in attesa\n  @zenko hud clear <uuid>     -> Rimuovere UUID dai pendenti\n  @zenko hud clearall         -> Svuotare tutti i pendenti\n\n[ LISTA NERA ]\n  @zenko ban <uuid>           -> Bannare UUID\n  @zenko ban list             -> Vedere lista dei bannati\n  @zenko unban <uuid>         -> Sbannare UUID\n\n[ SISTEMA ]\n  @zenko panel                -> Mostrare questo pannello",
+            "admin_panel": "=== PANNELLO ADMIN ZENKO ===\n\n[ VERSIONE ]\n  @zenko version              -> Vedere MIN_VERSION attuale\n  @zenko update <n>           -> Cambiare MIN_VERSION\n\n[ HUD / AGGIORNAMENTI ]\n  @zenko hud list             -> Vedere UUID con aggiornamento in attesa\n  @zenko hud clear <uuid>     -> Rimuovere UUID dai pendenti\n  @zenko hud clearall         -> Svuotare tutti i pendenti\n  @zenko hud add <uuid>       -> Accodare UUID per consegna remota\n  @zenko list                 -> Vedere tutti gli UUID registrati\n\n[ LISTA NERA ]\n  @zenko ban <uuid>           -> Bannare UUID\n  @zenko ban list             -> Vedere lista dei bannati\n  @zenko unban <uuid>         -> Sbannare UUID\n\n[ SISTEMA ]\n  @zenko panel                -> Mostrare questo pannello",
             "admin_version":    "MIN_VERSION attuale: {}",
             "admin_updated":    "Versione minima aggiornata a {}.",
             "admin_update_uso": "Uso: @zenko update <numero>",
@@ -257,7 +269,11 @@ LANGUAGE_CONFIGS = {
             "admin_unbanned":   "Sbannato: {}",
             "admin_banned":     "Bannato: {}",
             "admin_no_banned":  "Nessun utente bannato.",
-            "admin_ban_list":   "Bannati:\n{}"
+            "admin_ban_list":   "Bannati:\n{}",
+            "admin_known_list": "UUID registrati:\n{}",
+            "admin_no_known":   "Nessun UUID registrato ancora.",
+            "admin_hud_added":  "Aggiunto ai pendenti di consegna: {}",
+            "admin_hud_add_uso":"Uso: @zenko hud add <uuid>"
         }
     }
 }
@@ -783,6 +799,13 @@ pending_lock    = threading.Lock()
 blacklist       = set()
 blacklist_lock  = threading.Lock()
 
+# Registro de todos los UUID que alguna vez confirmaron tener el HUD activo.
+# NOTA: vive en memoria, igual que sessions/pending_updates/blacklist -> se
+# pierde si Render reinicia el dyno (cold start / redeploy). Si se necesita
+# que sobreviva a reinicios, hay que persistirlo a disco o a un storage externo.
+known_owners      = set()
+known_owners_lock = threading.Lock()
+
 def is_admin(user):
     return user == ADMIN_UUID
 
@@ -832,6 +855,22 @@ def chat():
         with pending_lock:
             pending_updates.clear()
         return jsonify({"reply": get_response(user, "admin_cleared")})
+
+    # ── NUEVO: agregar UUID a pendientes para entrega remota ───────────
+    if m.startswith("@zenko hud add ") and is_admin(user):
+        target = m.replace("@zenko hud add ", "").strip()
+        if not target:
+            return jsonify({"reply": get_response(user, "admin_hud_add_uso")})
+        with pending_lock:
+            pending_updates.add(target)
+        return jsonify({"reply": get_response(user, "admin_hud_added", target)})
+
+    # ── NUEVO: listar todos los UUID registrados ───────────────────────
+    if m == "@zenko list" and is_admin(user):
+        with known_owners_lock:
+            if not known_owners:
+                return jsonify({"reply": get_response(user, "admin_no_known")})
+            return jsonify({"reply": get_response(user, "admin_known_list", "\n".join(known_owners))})
 
     if m.startswith("@zenko unban ") and is_admin(user):
         target = m.replace("@zenko unban ", "").strip()
@@ -1021,7 +1060,11 @@ def confirm_update():
         return jsonify({"error": "missing owner"}), 400
     with pending_lock:
         pending_updates.discard(owner_uuid)
+    # NUEVO: registrar al owner como conocido cada vez que confirma
+    with known_owners_lock:
+        known_owners.add(owner_uuid)
     return jsonify({"status": "confirmed", "owner": owner_uuid})
+
 # --------------------------------------------------------
 # ESTADO / PING
 # --------------------------------------------------------
