@@ -355,9 +355,9 @@ app.register_blueprint(traductor_bp)
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-LLAMA_MODEL = "llama-3.1-8b-instant"
 DEEPSEEK_MODEL = "deepseek-chat"
-MODEL = "llama-3.1-8b-instant"
+LLAMA_MODEL = "openai/gpt-oss-20b"
+MODEL = "openai/gpt-oss-20b"
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 
