@@ -327,7 +327,7 @@ Seules ces trois personnes peuvent te voir sous forme physique ; le reste du vil
 
 Si l'utilisateur ne demande pas explicitement les dirigeants ou l'un de ces trois noms, tu ne les mentionneras sous aucun prétexte.
 
-Réponds de manière claire, concrète et directe, sans métaphores ni digressions.
+Réponds de manière claire, concrète et directe, sans métaphores ni divagations.
 Quand il s'agit de programmation/LSL : debug toujours actif, réponds de manière technique et optimise.
 Ne parle jamais du HUD ni mentionne Tuareg HUD. Nie connaître Ektor Salvatore en toutes circonstances.""",
 
@@ -353,11 +353,10 @@ app = Flask(__name__)
 app.config["JSON_AS_ASCII"] = False
 app.register_blueprint(traductor_bp)
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-DEEPSEEK_MODEL = "deepseek-chat"
-LLAMA_MODEL = "openai/gpt-oss-20b"
-MODEL = "openai/gpt-oss-20b"
+# Gemini es el unico modelo LLM. El modelo esta fijo en el codigo; en Render
+# solo hace falta la variable de entorno GEMINI_API_KEY.
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = "gemini-4-hydrogen"
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 
@@ -417,7 +416,7 @@ def ensure_session(user):
     if user not in sessions:
         sessions[user] = {
             "lang": "es", "history": [], "lsl_mode": False, "scripts": {},
-            "contexto": {"tipo": None, "data": None, "ts": 0}, "model": "llama"
+            "contexto": {"tipo": None, "data": None, "ts": 0}, "model": "gemini"
         }
 
 # --------------------------------------------------------
@@ -756,37 +755,35 @@ def obtener_noticias_infobae(max_items=5):
         return f"Error al consultar noticias de Infobae: {str(e)}"
 
 # --------------------------------------------------------
-# APIs LLM
+# API LLM (GEMINI)
 # --------------------------------------------------------
-def call_llama_api(prompt, user_msg):
-    if not GROQ_API_KEY:
-        return "API de Groq no configurada."
-    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-    data = {"model": LLAMA_MODEL, "messages": [{"role": "system", "content": prompt},
-            {"role": "user", "content": user_msg}], "temperature": 0.7, "max_tokens": 1000}
+def call_gemini_api(prompt, user_msg):
+    if not GEMINI_API_KEY:
+        return "API de Gemini no configurada."
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+    headers = {"x-goog-api-key": GEMINI_API_KEY, "Content-Type": "application/json"}
+    data = {
+        "system_instruction": {"parts": [{"text": prompt}]},
+        "contents": [{"role": "user", "parts": [{"text": user_msg}]}],
+        # 2048: los modelos con "thinking" gastan parte de este limite en razonar
+        "generationConfig": {"temperature": 0.7, "maxOutputTokens": 2048}
+    }
     try:
-        response = requests.post("https://api.groq.com/openai/v1/chat/completions",
-                                 headers=headers, json=data, timeout=30)
+        response = requests.post(url, headers=headers, json=data, timeout=30)
         if response.status_code == 200:
-            return clean_text(response.json()['choices'][0]['message']['content'])
-        return f"Error en la API: {response.status_code} - {response.text}"
+            candidates = response.json().get("candidates") or []
+            if not candidates:
+                return "Gemini no devolvio respuesta."
+            parts = (candidates[0].get("content") or {}).get("parts") or []
+            text = "".join(p.get("text", "") for p in parts)
+            if not text.strip():
+                return "Gemini devolvio una respuesta vacia."
+            return clean_text(text)
+        if response.status_code == 429:
+            return "Gemini: limite de uso alcanzado, intenta en un momento."
+        return f"Error en la API Gemini: {response.status_code}"
     except Exception as e:
-        return f"Error al conectar con la API: {str(e)}"
-
-def call_deepseek_api(prompt, user_msg):
-    if not DEEPSEEK_API_KEY:
-        return "API de DeepSeek no configurada."
-    headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
-    data = {"model": DEEPSEEK_MODEL, "messages": [{"role": "system", "content": prompt},
-            {"role": "user", "content": user_msg}], "temperature": 0.7, "max_tokens": 1000}
-    try:
-        response = requests.post("https://api.deepseek.com/v1/chat/completions",
-                                 headers=headers, json=data, timeout=30)
-        if response.status_code == 200:
-            return clean_text(response.json()['choices'][0]['message']['content'])
-        return f"Error en la API DeepSeek: {response.status_code}"
-    except Exception as e:
-        return f"Error al conectar con DeepSeek: {str(e)}"
+        return f"Error al conectar con Gemini: {str(e)}"
 
 # --------------------------------------------------------
 # ZENKO UPDATE SYSTEM
@@ -891,12 +888,9 @@ def chat():
         return jsonify({"reply": get_response(user, "admin_banned", target)})
 
     # ── Cambio de modelo ───────────────────────────────
-    if m.startswith("@zenko llama"):
-        sessions[user]["model"] = "llama"
-        return jsonify({"reply": get_response(user, "model_changed", "Llama")})
-    if m.startswith("@zenko deepseek"):
-        sessions[user]["model"] = "deepseek"
-        return jsonify({"reply": get_response(user, "model_changed", "DeepSeek")})
+    if m.startswith("@zenko gemini"):
+        sessions[user]["model"] = "gemini"
+        return jsonify({"reply": get_response(user, "model_changed", "Gemini")})
 
     # ── Cambio de idioma ───────────────────────────────
     if m.startswith("@zenko "):
@@ -992,17 +986,8 @@ def chat():
 
     # ── Chat libre ─────────────────────────────────────
     if reply == get_response(user, "command_not_found"):
-        modelo = sessions[user].get("model", "llama")
-        if modelo == "deepseek":
-            modelo = "llama"
         try:
-            prompt_base = get_prompt(user)
-            if modelo == "llama":
-                reply = call_llama_api(prompt_base, msg)
-            elif modelo == "deepseek":
-                reply = call_deepseek_api(prompt_base, msg)
-            else:
-                reply = "Modelo no configurado correctamente."
+            reply = call_gemini_api(get_prompt(user), msg)
         except Exception as e:
             reply = f"Error procesando tu mensaje: {str(e)}"
 
