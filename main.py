@@ -45,6 +45,8 @@ LANGUAGE_CONFIGS = {
             "language_changed": "Idioma cambiado a español.",
             "lsl_on": "Modo LSL activado.", "lsl_off": "Modo LSL desactivado.",
             "model_changed": "Modelo cambiado a {}.",
+            "more_hint": "(parte {}/{}: escribe @zenko mas para continuar)",
+            "no_more": "No hay mas partes pendientes.",
             "no_city": "Indica la ciudad: @zenko clima <ciudad>",
             "no_search_term": "Indica el término de búsqueda: @zenko busca <término>",
             "no_wiki_term": "Indica un término: @zenko define <término>",
@@ -110,6 +112,8 @@ LANGUAGE_CONFIGS = {
             "language_changed": "Language changed to English.",
             "lsl_on": "LSL mode activated.", "lsl_off": "LSL mode deactivated.",
             "model_changed": "Model changed to {}.",
+            "more_hint": "(part {}/{}: type @zenko more to continue)",
+            "no_more": "No more parts pending.",
             "no_city": "Specify the city: @zenko weather <city>",
             "no_search_term": "Specify search term: @zenko search <term>",
             "no_wiki_term": "Specify a term: @zenko define <term>",
@@ -175,6 +179,8 @@ LANGUAGE_CONFIGS = {
             "language_changed": "Langue changée en français.",
             "lsl_on": "Mode LSL activé.", "lsl_off": "Mode LSL désactivé.",
             "model_changed": "Modèle changé en {}.",
+            "more_hint": "(partie {}/{}: ecrivez @zenko plus pour continuer)",
+            "no_more": "Aucune partie en attente.",
             "no_city": "Indiquez la ville: @zenko météo <ville>",
             "no_search_term": "Indiquez le terme de recherche: @zenko recherche <terme>",
             "no_wiki_term": "Indiquez un terme: @zenko définir <terme>",
@@ -240,6 +246,8 @@ LANGUAGE_CONFIGS = {
             "language_changed": "Lingua cambiata in italiano.",
             "lsl_on": "Modalità LSL attivata.", "lsl_off": "Modalità LSL disattivata.",
             "model_changed": "Modello cambiato in {}.",
+            "more_hint": "(parte {}/{}: scrivi @zenko altro per continuare)",
+            "no_more": "Nessuna parte in sospeso.",
             "no_city": "Specifica la città: @zenko meteo <città>",
             "no_search_term": "Specifica il termine de ricerca: @zenko cerca <termine>",
             "no_wiki_term": "Specifica un termine: @zenko definisci <termine>",
@@ -360,6 +368,10 @@ GEMINI_MODEL = "gemini-4-hydrogen"
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 
+# Tamano maximo (caracteres) de cada parte enviada a Second Life.
+# llSay/llOwnerSay cortan en 1024; se deja margen para el aviso "parte X/Y".
+MAX_CHUNK = 900
+
 # --------------------------------------------------------
 # UTILIDADES
 # --------------------------------------------------------
@@ -416,7 +428,8 @@ def ensure_session(user):
     if user not in sessions:
         sessions[user] = {
             "lang": "es", "history": [], "lsl_mode": False, "scripts": {},
-            "contexto": {"tipo": None, "data": None, "ts": 0}, "model": "gemini"
+            "contexto": {"tipo": None, "data": None, "ts": 0}, "model": "gemini",
+            "pending_chunks": [], "chunks_total": 0
         }
 
 # --------------------------------------------------------
@@ -792,6 +805,50 @@ def call_gemini_api(prompt, user_msg):
         return f"Error al conectar con Gemini: {str(e)}"
 
 # --------------------------------------------------------
+# RESPUESTAS EN PARTES (limite de Second Life)
+# --------------------------------------------------------
+def split_reply(text, limit=MAX_CHUNK):
+    """Divide el texto en partes <= limit, cortando en salto de linea,
+    fin de oracion o espacio (en ese orden de preferencia)."""
+    text = (text or "").strip()
+    chunks = []
+    while len(text) > limit:
+        cut = limit
+        for sep in ("\n", ". ", " "):
+            idx = text.rfind(sep, 0, limit)
+            if idx >= limit // 2:
+                cut = idx + len(sep)
+                break
+        chunks.append(text[:cut].strip())
+        text = text[cut:].strip()
+    if text:
+        chunks.append(text)
+    return chunks
+
+def enviar_en_partes(user, reply):
+    """Devuelve la primera parte y guarda el resto para '@zenko mas'."""
+    ensure_session(user)
+    chunks = split_reply(reply)
+    if len(chunks) <= 1:
+        sessions[user]["pending_chunks"] = []
+        sessions[user]["chunks_total"] = 0
+        return reply
+    sessions[user]["pending_chunks"] = chunks[1:]
+    sessions[user]["chunks_total"] = len(chunks)
+    return chunks[0] + "\n" + get_response(user, "more_hint", 1, len(chunks))
+
+def siguiente_parte(user):
+    ensure_session(user)
+    pending = sessions[user].get("pending_chunks") or []
+    if not pending:
+        return get_response(user, "no_more")
+    total = sessions[user].get("chunks_total", 0)
+    chunk = pending.pop(0)
+    if pending:
+        chunk += "\n" + get_response(user, "more_hint", total - len(pending), total)
+    return chunk
+
+# --------------------------------------------------------
 # ZENKO UPDATE SYSTEM
 # --------------------------------------------------------
 ADMIN_UUID  = "7e8a1bf1-184b-4c23-9cd7-8b41c6f9e8e7"
@@ -898,6 +955,10 @@ def chat():
         sessions[user]["model"] = "gemini"
         return jsonify({"reply": get_response(user, "model_changed", "Gemini")})
 
+    # ── Continuar respuesta larga ──────────────────────
+    if m in ("@zenko mas", "@zenko more", "@zenko plus", "@zenko altro"):
+        return jsonify({"reply": clean_text(siguiente_parte(user))})
+
     # ── Cambio de idioma ───────────────────────────────
     if m.startswith("@zenko "):
         maybe = m.replace("@zenko ", "").strip()
@@ -993,7 +1054,7 @@ def chat():
     # ── Chat libre ─────────────────────────────────────
     if reply == get_response(user, "command_not_found"):
         try:
-            reply = call_gemini_api(get_prompt(user), msg)
+            reply = enviar_en_partes(user, call_gemini_api(get_prompt(user), msg))
         except Exception as e:
             reply = f"Error procesando tu mensaje: {str(e)}"
 
