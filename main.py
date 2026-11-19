@@ -765,8 +765,14 @@ def call_gemini_api(prompt, user_msg):
     data = {
         "system_instruction": {"parts": [{"text": prompt}]},
         "contents": [{"role": "user", "parts": [{"text": user_msg}]}],
-        # 2048: los modelos con "thinking" gastan parte de este limite en razonar
-        "generationConfig": {"temperature": 0.7, "maxOutputTokens": 2048}
+        # 2048: el razonamiento gasta parte de este limite.
+        # thinkingLevel LOW: Hydrogen usa HIGH por defecto, que es lento
+        # (causaba "Read timed out" en el chat).
+        "generationConfig": {
+            "temperature": 0.7,
+            "maxOutputTokens": 2048,
+            "thinkingConfig": {"thinkingLevel": "LOW"}
+        }
     }
     try:
         response = requests.post(url, headers=headers, json=data, timeout=30)
