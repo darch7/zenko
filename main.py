@@ -817,10 +817,12 @@ def call_gemini_api(prompt, user_msg):
     # Cadena de modelos: (modelo, timeout en segundos, usar thinkingConfig LOW).
     # Si uno tarda o devuelve error (503 por alta demanda, etc.) se pasa al siguiente.
     # El respaldo no lleva thinkingConfig: cada familia usa parametros distintos.
+    # Orden segun los logs de Render: flash-lite respondio en ~1s mientras los
+    # otros daban timeout, asi que va primero.
     cadena = [
+        (GEMINI_FALLBACK_MODEL_2, 10, False),
+        (GEMINI_FALLBACK_MODEL, 12, False),
         (GEMINI_MODEL, 12, True),
-        (GEMINI_FALLBACK_MODEL, 15, False),
-        (GEMINI_FALLBACK_MODEL_2, 15, False),
     ]
     errores = []
     for modelo, timeout, thinking_low in cadena:
