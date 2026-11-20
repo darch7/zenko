@@ -10,6 +10,8 @@ import threading
 from flask import Response
 from bs4 import BeautifulSoup
 from translate_api import traductor_bp
+import traceback
+from werkzeug.exceptions import HTTPException
 
 # --------------------------------------------------------
 # CONFIGURACIÓN DE IDIOMAS
@@ -367,6 +369,10 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL = "gemini-4-hydrogen"
 GEMINI_FALLBACK_MODEL = "gemini-flash-latest"  # respaldo si el principal tarda o falla
 GEMINI_FALLBACK_MODEL_2 = "gemini-3.5-flash-lite"  # segundo respaldo (modelo ligero)
+# Tiempo total maximo (segundos) para toda la cadena de modelos. Debe quedar por
+# debajo del timeout de gunicorn (30 s por defecto); si no, gunicorn mata el
+# worker y el HUD recibe "Internal Server Error".
+GEMINI_TOTAL_BUDGET = 24
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 
@@ -814,19 +820,25 @@ def _gemini_request(model, prompt, user_msg, timeout, thinking_low):
 def call_gemini_api(prompt, user_msg):
     if not GEMINI_API_KEY:
         return "API de Gemini no configurada."
-    # Cadena de modelos: (modelo, timeout en segundos, usar thinkingConfig LOW).
+    # Cadena de modelos: (modelo, timeout maximo en segundos, usar thinkingConfig LOW).
     # Si uno tarda o devuelve error (503 por alta demanda, etc.) se pasa al siguiente.
     # El respaldo no lleva thinkingConfig: cada familia usa parametros distintos.
     # Orden segun los logs de Render: flash-lite respondio en ~1s mientras los
     # otros daban timeout, asi que va primero.
     cadena = [
         (GEMINI_FALLBACK_MODEL_2, 10, False),
-        (GEMINI_FALLBACK_MODEL, 12, False),
-        (GEMINI_MODEL, 12, True),
+        (GEMINI_FALLBACK_MODEL, 10, False),
+        (GEMINI_MODEL, 10, True),
     ]
+    inicio = time.time()
     errores = []
     for modelo, timeout, thinking_low in cadena:
-        text, err = _gemini_request(modelo, prompt, user_msg, timeout, thinking_low)
+        restante = GEMINI_TOTAL_BUDGET - (time.time() - inicio)
+        if restante < 3:
+            errores.append("sin tiempo")
+            print(f"[gemini] presupuesto de tiempo agotado antes de {modelo}")
+            break
+        text, err = _gemini_request(modelo, prompt, user_msg, min(timeout, restante), thinking_low)
         if text:
             return clean_text(text)
         errores.append(err)
@@ -1162,6 +1174,21 @@ def status():
 @app.route("/ping", methods=["GET"])
 def ping():
     return "Zenko awake"
+
+# --------------------------------------------------------
+# MANEJO DE ERRORES
+# --------------------------------------------------------
+@app.errorhandler(Exception)
+def handle_unexpected_error(e):
+    """Registra el traceback completo en el log de Render y evita devolver
+    la pagina HTML de error 500 al HUD."""
+    if isinstance(e, HTTPException):
+        return e
+    print("[ERROR] Excepcion no controlada en", request.method, request.path)
+    traceback.print_exc()
+    if request.path == "/chat":
+        return jsonify({"reply": "Error interno del servidor. Intenta de nuevo."})
+    return jsonify({"error": "internal"}), 500
 
 # --------------------------------------------------------
 # EJECUCIÓN
