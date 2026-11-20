@@ -365,6 +365,7 @@ app.register_blueprint(traductor_bp)
 # solo hace falta la variable de entorno GEMINI_API_KEY.
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL = "gemini-4-hydrogen"
+GEMINI_FALLBACK_MODEL = "gemini-flash-latest"  # respaldo si el principal tarda o falla
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 
@@ -770,39 +771,60 @@ def obtener_noticias_infobae(max_items=5):
 # --------------------------------------------------------
 # API LLM (GEMINI)
 # --------------------------------------------------------
-def call_gemini_api(prompt, user_msg):
-    if not GEMINI_API_KEY:
-        return "API de Gemini no configurada."
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+def _gemini_request(model, prompt, user_msg, timeout, thinking_low):
+    """Una llamada a Gemini. Devuelve (texto, error). Registra tiempos en el log."""
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     headers = {"x-goog-api-key": GEMINI_API_KEY, "Content-Type": "application/json"}
+    # 2048: el razonamiento gasta parte de este limite.
+    gen_config = {"temperature": 0.7, "maxOutputTokens": 2048}
+    if thinking_low:
+        # Hydrogen razona en nivel HIGH por defecto, que es lento para un chat.
+        gen_config["thinkingConfig"] = {"thinkingLevel": "LOW"}
     data = {
         "system_instruction": {"parts": [{"text": prompt}]},
         "contents": [{"role": "user", "parts": [{"text": user_msg}]}],
-        # 2048: el razonamiento gasta parte de este limite.
-        # thinkingLevel LOW: Hydrogen usa HIGH por defecto, que es lento
-        # (causaba "Read timed out" en el chat).
-        "generationConfig": {
-            "temperature": 0.7,
-            "maxOutputTokens": 2048,
-            "thinkingConfig": {"thinkingLevel": "LOW"}
-        }
+        "generationConfig": gen_config
     }
+    t0 = time.time()
     try:
-        response = requests.post(url, headers=headers, json=data, timeout=30)
-        if response.status_code == 200:
-            candidates = response.json().get("candidates") or []
-            if not candidates:
-                return "Gemini no devolvio respuesta."
-            parts = (candidates[0].get("content") or {}).get("parts") or []
-            text = "".join(p.get("text", "") for p in parts)
-            if not text.strip():
-                return "Gemini devolvio una respuesta vacia."
-            return clean_text(text)
-        if response.status_code == 429:
-            return "Gemini: limite de uso alcanzado, intenta en un momento."
-        return f"Error en la API Gemini: {response.status_code}"
+        response = requests.post(url, headers=headers, json=data, timeout=timeout)
+    except requests.exceptions.Timeout:
+        print(f"[gemini] {model} TIMEOUT tras {time.time() - t0:.1f}s")
+        return None, "timeout"
     except Exception as e:
-        return f"Error al conectar con Gemini: {str(e)}"
+        print(f"[gemini] {model} ERROR de conexion: {e}")
+        return None, str(e)
+    dt = time.time() - t0
+    print(f"[gemini] {model} HTTP {response.status_code} en {dt:.1f}s")
+    if response.status_code == 200:
+        candidates = response.json().get("candidates") or []
+        if not candidates:
+            return None, "sin respuesta"
+        parts = (candidates[0].get("content") or {}).get("parts") or []
+        text = "".join(p.get("text", "") for p in parts)
+        if not text.strip():
+            return None, "respuesta vacia"
+        return text, None
+    if response.status_code == 429:
+        return None, "limit"
+    print(f"[gemini] {model} cuerpo del error: {response.text[:300]}")
+    return None, f"HTTP {response.status_code}"
+
+def call_gemini_api(prompt, user_msg):
+    if not GEMINI_API_KEY:
+        return "API de Gemini no configurada."
+    # 1) Modelo principal con tiempo limitado; si tarda, se usa el de respaldo.
+    text, err = _gemini_request(GEMINI_MODEL, prompt, user_msg, 15, True)
+    if text:
+        return clean_text(text)
+    print(f"[gemini] principal fallo ({err}); probando respaldo {GEMINI_FALLBACK_MODEL}")
+    # 2) Modelo de respaldo (sin thinkingConfig: cada modelo usa parametros distintos)
+    text, err2 = _gemini_request(GEMINI_FALLBACK_MODEL, prompt, user_msg, 25, False)
+    if text:
+        return clean_text(text)
+    if "limit" in (err, err2):
+        return "Gemini: limite de uso alcanzado, intenta en un momento."
+    return f"Error al conectar con Gemini: {err2}"
 
 # --------------------------------------------------------
 # RESPUESTAS EN PARTES (limite de Second Life)
