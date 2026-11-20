@@ -366,6 +366,7 @@ app.register_blueprint(traductor_bp)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL = "gemini-4-hydrogen"
 GEMINI_FALLBACK_MODEL = "gemini-flash-latest"  # respaldo si el principal tarda o falla
+GEMINI_FALLBACK_MODEL_2 = "gemini-3.5-flash-lite"  # segundo respaldo (modelo ligero)
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 
@@ -813,18 +814,24 @@ def _gemini_request(model, prompt, user_msg, timeout, thinking_low):
 def call_gemini_api(prompt, user_msg):
     if not GEMINI_API_KEY:
         return "API de Gemini no configurada."
-    # 1) Modelo principal con tiempo limitado; si tarda, se usa el de respaldo.
-    text, err = _gemini_request(GEMINI_MODEL, prompt, user_msg, 15, True)
-    if text:
-        return clean_text(text)
-    print(f"[gemini] principal fallo ({err}); probando respaldo {GEMINI_FALLBACK_MODEL}")
-    # 2) Modelo de respaldo (sin thinkingConfig: cada modelo usa parametros distintos)
-    text, err2 = _gemini_request(GEMINI_FALLBACK_MODEL, prompt, user_msg, 25, False)
-    if text:
-        return clean_text(text)
-    if "limit" in (err, err2):
+    # Cadena de modelos: (modelo, timeout en segundos, usar thinkingConfig LOW).
+    # Si uno tarda o devuelve error (503 por alta demanda, etc.) se pasa al siguiente.
+    # El respaldo no lleva thinkingConfig: cada familia usa parametros distintos.
+    cadena = [
+        (GEMINI_MODEL, 12, True),
+        (GEMINI_FALLBACK_MODEL, 15, False),
+        (GEMINI_FALLBACK_MODEL_2, 15, False),
+    ]
+    errores = []
+    for modelo, timeout, thinking_low in cadena:
+        text, err = _gemini_request(modelo, prompt, user_msg, timeout, thinking_low)
+        if text:
+            return clean_text(text)
+        errores.append(err)
+        print(f"[gemini] {modelo} fallo ({err}); siguiente modelo")
+    if "limit" in errores:
         return "Gemini: limite de uso alcanzado, intenta en un momento."
-    return f"Error al conectar con Gemini: {err2}"
+    return f"Gemini no esta disponible ahora (alta demanda). Intenta de nuevo en unos segundos. [{errores[-1]}]"
 
 # --------------------------------------------------------
 # RESPUESTAS EN PARTES (limite de Second Life)
